@@ -41,3 +41,17 @@ def test_repeated_wrong_code_within_15s_is_ignored():
     assert g.decide(R("wrong_code", None, 0)) == "wrong_code"
     assert g.decide(R("wrong_code", None, 5)) == "ignore"
     assert g.decide(R("wrong_code", None, 16)) == "wrong_code"
+
+def test_already_checked_in_gets_welcome_back():
+    assert CheckinGate().decide(R("already", "Sam Lee", 0)) == "welcome_back"
+
+def test_already_right_after_welcome_is_ignored():
+    g = CheckinGate()
+    g.decide(R("success", "Sam Lee", 0))
+    assert g.decide(R("already", "Sam Lee", 20)) == "ignore"
+
+def test_repeated_already_within_15s_is_ignored():
+    g = CheckinGate()
+    assert g.decide(R("already", "Sam Lee", 0)) == "welcome_back"
+    assert g.decide(R("already", "Sam Lee", 10)) == "ignore"
+    assert g.decide(R("already", "Sam Lee", 16)) == "welcome_back"

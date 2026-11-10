@@ -30,3 +30,8 @@ def test_fixed_lines():
 def test_wrong_code_line():
     from greeter.lines import WRONG_CODE_LINE
     assert WRONG_CODE_LINE == "Ooh, that's the event link! Open your ticket instead, the one with your name under the QR code."
+
+def test_welcome_back_line():
+    from greeter.lines import welcome_back_line
+    assert welcome_back_line("Alan Philip") == "Welcome back, Alan! You've already checked in, so take a seat whenever you're ready."
+    assert welcome_back_line(None) == "Welcome back! You've already checked in, so take a seat whenever you're ready."

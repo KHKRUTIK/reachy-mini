@@ -11,6 +11,7 @@
     try { data = JSON.parse(body); } catch (_) {}
     const name = (data && data.guest && typeof data.guest.name === "string" && data.guest.name.trim()) || null;
     if (status === 200 && data && data.status === "success") return { kind: "success", name };
+    if (status === 200 && data && data.status === "already-checked-in") return { kind: "already", name };
     return { kind: "failure", name };
   }
 

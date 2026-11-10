@@ -11,7 +11,7 @@ from aiohttp import web
 
 from greeter.checkin import ScanResult
 
-_KINDS = {"success", "failure", "wrong_code"}
+_KINDS = {"success", "failure", "wrong_code", "already"}
 
 
 def make_app(

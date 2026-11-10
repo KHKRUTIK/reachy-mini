@@ -97,3 +97,11 @@ async def test_face_updates_ignored_while_moving():
     for t in range(3, 12):
         await g.handle_face(True, float(t))
     assert QR_PROMPT_LINE not in speech.lines
+
+
+async def test_already_checked_in_says_welcome_back():
+    g, speech, moves = make(compliment="Nice hat!")
+    await g.handle_scan(R("already", "Alan Philip", 0))
+    await g.drain()
+    assert speech.lines == ["Welcome back, Alan! You've already checked in, so take a seat whenever you're ready."]
+    assert moves.calls == ["welcome"]

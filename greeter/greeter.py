@@ -7,7 +7,7 @@ from typing import Any, Awaitable, Callable
 
 from greeter.arrival import ArrivalPrompter
 from greeter.checkin import CheckinGate, ScanResult
-from greeter.lines import FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE, welcome_line
+from greeter.lines import FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE, welcome_back_line, welcome_line
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +39,9 @@ class Greeter:
         if decision == "welcome":
             await self._speech.put(welcome_line(r.name))  # queued first: the compliment can never jump ahead
             self._spawn(self._compliment_after_welcome())
+            self._spawn(self._move(self._moves.welcome))
+        elif decision == "welcome_back":
+            await self._speech.put(welcome_back_line(r.name))
             self._spawn(self._move(self._moves.welcome))
         elif decision == "front_desk":
             await self._speech.put(FRONT_DESK_LINE)

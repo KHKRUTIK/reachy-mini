@@ -17,7 +17,7 @@ test("express not-found is a failure", () => {
 });
 
 test("any other express status is a failure, keeping the guest name if present", () => {
-  const body = JSON.stringify({ status: "already-checked-in", guest: { name: "Sam Lee" } });
+  const body = JSON.stringify({ status: "pending-approval", guest: { name: "Sam Lee" } });
   assert.deepEqual(parseScanResponse(EXPRESS, 200, body), { kind: "failure", name: "Sam Lee" });
 });
 
@@ -42,4 +42,9 @@ test("event-page link instead of a ticket is a wrong code", () => {
 test("ticket codes and non-Luma codes are not wrong codes", () => {
   assert.equal(classifySeenCode("https://luma.com/check-in/evt-ZLcgMdLTqHF8bK3?pk=g-abc"), null);
   assert.equal(classifySeenCode("https://example.com/menu"), null);
+});
+
+test("already-checked-in is its own kind, with the guest name", () => {
+  const body = JSON.stringify({ status: "already-checked-in", message: "This guest is already checked in.", guest: { name: "Sam Lee" } });
+  assert.deepEqual(parseScanResponse(EXPRESS, 200, body), { kind: "already", name: "Sam Lee" });
 });

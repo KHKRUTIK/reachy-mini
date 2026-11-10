@@ -23,6 +23,12 @@ def first_name(full_name: str | None) -> str | None:
     return token
 
 
+def welcome_back_line(full_name: str | None) -> str:
+    name = first_name(full_name)
+    greeting = f"Welcome back, {name}!" if name else "Welcome back!"
+    return f"{greeting} You've already checked in, so take a seat whenever you're ready."
+
+
 def welcome_line(full_name: str | None) -> str:
     name = first_name(full_name)
     greeting = f"Welcome, {name}!" if name else "Welcome!"

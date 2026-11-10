@@ -10,7 +10,16 @@ window.addEventListener("message", (e) => {
   if (d.type === "api") {
     if (DEBUG) send({ type: "debug", text: `API ${d.status} ${d.url}\n${d.body}` });
     const result = parseScanResponse(d.url, d.status, d.body);
-    if (result) send({ type: "scan", ...result });
+    if (result) {
+      // Always record the shape of check-in replies (status/message/keys only) so mis-reads can be diagnosed.
+      let info = "";
+      try {
+        const j = JSON.parse(d.body);
+        info = `status=${JSON.stringify(j.status)} message=${JSON.stringify(j.message)} keys=${Object.keys(j).join(",")}`;
+      } catch (_) { info = `unparsed body (${(d.body || "").length} chars)`; }
+      send({ type: "debug", text: `EXPRESS http=${d.status} ${info} -> ${result.kind}` });
+      send({ type: "scan", ...result });
+    }
   } else if (d.type === "seen") {
     if (DEBUG) send({ type: "debug", text: `SEEN ${d.luma ? "luma" : "other"} ${d.text}` });
     if (!d.luma && classifySeenCode(d.text) === "wrong_code") send({ type: "scan", kind: "wrong_code", name: null });
