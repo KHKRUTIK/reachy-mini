@@ -34,7 +34,7 @@
 
   const LUMA_CODE = /^https:\/\/(www\.)?(luma\.com|lu\.ma)\/check-in\//;
   const SHOW_MS = 1500;      // how long the clean copy is shown
-  const REPEAT_MS = 10000;   // don't re-show the same code within this window
+  const REPEAT_MS = 20000;   // don't re-show the same code within this window (limits automatic re-reads)
   const DETECT_EVERY_MS = 150;
 
   function drawCleanCode(ctx, text, w, h) {

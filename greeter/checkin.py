@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-Decision = Literal["welcome", "welcome_back", "front_desk", "wrong_code", "ignore"]
+Decision = Literal["welcome", "welcome_back", "all_set", "front_desk", "wrong_code", "ignore"]
 
 
 @dataclass(frozen=True)
@@ -21,10 +21,12 @@ def _key(name: str | None) -> str | None:
 class CheckinGate:
     """Suppresses repeat reads of a ticket that is still being held up."""
 
-    def __init__(self, repeat_window_s: float = 60.0, failure_repeat_s: float = 15.0) -> None:
+    def __init__(self, repeat_window_s: float = 60.0, failure_repeat_s: float = 15.0, all_set_after_s: float = 10.0) -> None:
         self._repeat_window_s = repeat_window_s
         self._failure_repeat_s = failure_repeat_s
+        self._all_set_after_s = all_set_after_s
         self._welcomed: dict[str, float] = {}
+        self._all_set_said: set[str] = set()
         self._front_desk: dict[object, float] = {}
         self._wrong_code_at: float | None = None
 
@@ -37,6 +39,10 @@ class CheckinGate:
             self._wrong_code_at = r.at
             return "wrong_code"
         if key is not None and key in self._welcomed:
+            # Re-reads right after a welcome stay silent; one deliberate re-scan gets "all set".
+            if r.at - self._welcomed[key] >= self._all_set_after_s and key not in self._all_set_said:
+                self._all_set_said.add(key)
+                return "all_set"
             return "ignore"
         if r.kind == "success":
             if key is not None:
@@ -54,4 +60,5 @@ class CheckinGate:
 
     def _prune(self, now: float) -> None:
         self._welcomed = {k: t for k, t in self._welcomed.items() if now - t < self._repeat_window_s}
+        self._all_set_said &= self._welcomed.keys()
         self._front_desk = {k: t for k, t in self._front_desk.items() if now - t < self._failure_repeat_s}

@@ -65,7 +65,7 @@ async def test_wrong_code_coaches():
 async def test_already_checked_in_after_welcome_is_silent():
     g, speech, _ = make()
     await g.handle_scan(R("success", "Sam", 0))
-    await g.handle_scan(R("failure", "Sam", 10))
+    await g.handle_scan(R("failure", "Sam", 5))
     await g.drain()
     assert speech.lines == ["Welcome, Sam! MLAI welcomes you to the OpenAI Dev Day!"]
 
@@ -126,3 +126,16 @@ async def test_express_off_warning_is_spoken_once_per_minute():
     await g.handle_scan(R("express_off", None, 30))
     await g.handle_scan(R("express_off", None, 61))
     assert speech.lines == [EXPRESS_OFF_LINE, EXPRESS_OFF_LINE]
+
+
+async def test_deliberate_rescan_says_all_set():
+    g, speech, _ = make()
+    await g.handle_scan(R("success", "Luis Saso", 0))
+    await g.handle_scan(R("already", "Luis Saso", 5))
+    await g.handle_scan(R("already", "Luis Saso", 15))
+    await g.handle_scan(R("already", "Luis Saso", 25))
+    await g.drain()
+    assert speech.lines == [
+        "Welcome, Luis! MLAI welcomes you to the OpenAI Dev Day!",
+        "You're all checked in, Luis! Take a seat whenever you're ready.",
+    ]

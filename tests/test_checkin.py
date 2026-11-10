@@ -10,7 +10,7 @@ def test_success_then_already_checked_in_same_name_is_ignored():
     g = CheckinGate()
     g.decide(R("success", "Sam Lee", 0))
     assert g.decide(R("failure", "sam lee", 5)) == "ignore"
-    assert g.decide(R("success", "Sam Lee", 30)) == "ignore"
+    assert g.decide(R("already", "Sam Lee", 9)) == "ignore"
 
 def test_same_name_after_window_is_handled_again():
     g = CheckinGate()
@@ -48,7 +48,21 @@ def test_already_checked_in_gets_welcome_back():
 def test_already_right_after_welcome_is_ignored():
     g = CheckinGate()
     g.decide(R("success", "Sam Lee", 0))
-    assert g.decide(R("already", "Sam Lee", 20)) == "ignore"
+    assert g.decide(R("already", "Sam Lee", 5)) == "ignore"
+
+
+def test_deliberate_rescan_after_welcome_gets_all_set_once():
+    g = CheckinGate()
+    g.decide(R("success", "Sam Lee", 0))
+    assert g.decide(R("already", "Sam Lee", 12)) == "all_set"
+    assert g.decide(R("already", "Sam Lee", 25)) == "ignore"
+    assert g.decide(R("already", "Sam Lee", 50)) == "ignore"
+
+
+def test_after_welcome_window_rescan_is_welcome_back():
+    g = CheckinGate()
+    g.decide(R("success", "Sam Lee", 0))
+    assert g.decide(R("already", "Sam Lee", 61)) == "welcome_back"
 
 def test_repeated_already_within_15s_is_ignored():
     g = CheckinGate()
