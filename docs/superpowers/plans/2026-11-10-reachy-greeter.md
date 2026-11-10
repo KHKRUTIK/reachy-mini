@@ -17,11 +17,12 @@
 - QR prompt line: `Hi! If you haven't checked in yet, just show me the QR code on your Luma ticket.`
 - No Luma API, public or internal. Luma check-in happens only through Luma's own web scanner in Express Mode.
 - No face recognition. No saved images. No frame containing a face is ever sent to a cloud service. The only image that leaves the Mac is the shoulders-down crop for the compliment. If no face is detected in the snapshot, send nothing.
-- Never say a name unless it came from a scanner success result received in the last few seconds.
+- Never say a name unless it came from a scanner success result received in the last few seconds, or from the name check-in flow (Task 10), where the full name is read back from Luma's approved list.
+- Name check-in candidates are only approved guests who aren't checked in yet. More than one match means ask for the last name. Two misses means the front desk. Only check someone in after a clear "yes".
 - The local server binds to `127.0.0.1` only.
 - Realtime model `gpt-realtime`. Every model name and the voice are set in `.env`, never hard-coded in logic.
 - Repeat window: ignore any result for a name welcomed less than 60 s ago. QR prompt: the face must be present for at least 4 s with no scan, and prompts are at least 30 s apart.
-- The event is on 21 Nov 2026. The end-to-end dry run (Task 9) must pass before 19 Nov.
+- The event is on 21 Nov 2026. The end-to-end dry run (Tasks 9 and 10) must pass before 19 Nov.
 
 ## Review Focus
 
@@ -336,6 +337,9 @@ Expected: PASS.
 
 ### Task 6: Chrome extension — capture the scanner's results, then report them
 
+**Change from scan testing:** in Step 1, also inject a MAIN-world script (`"world": "MAIN"`, `run_at: "document_start"`) that wraps `window.fetch` and relays the JSON of responses from `api.luma.com/event/*`, along with the request URL, through `window.postMessage` → content script → `/debug`. In Step 2, capture these responses alongside the page text. In Step 5, build `parseScanText` (or a sibling `parseScanResponse(url, status, json)`) from whichever source is clearer, preferring the API response.
+**Digital zoom test (do before Step 2):** in the same MAIN-world script, wrap `navigator.mediaDevices.getUserMedia` so the scanner receives a canvas `captureStream(30)` of the centre 960x540 of the real 1920x1080 track, scaled up to 1920x1080. Put it behind `const ZOOM = true`. Use the iPhone 12 at 30, 45 and 60 cm with `ZOOM` on and off, and record the results in the discovery notes. Keep it on only if it scans at more distances.
+
 Do this with the host and the test ticket from Task 1.
 
 **Files:**
@@ -525,3 +529,61 @@ Expected: the QR prompt, said once. Undo the test check-in in Luma afterwards.
 Write an event-day checklist covering: power on → start the daemon (exact command) → open the scanner, select the camera and turn on Express Mode → check the extension is loaded → run `python -m greeter.main` → do a test scan with the test ticket and undo it → bring a hotspot. Add a troubleshooting section: no greeting (check `GET http://127.0.0.1:8765/health` and the extension's service-worker console), no voice (check `OPENAI_API_KEY`), and camera busy (Task 1b).
 
 - [ ] **Step 9: Commit** with `feat: realtime voice, moves and main loop; event-day runbook`.
+
+### Task 10: Name check-in when the QR code won't scan
+
+**Files:**
+- Create: `greeter/guests.py`, `tests/test_guests.py`, `extension/list.js`
+- Modify: `extension/manifest.json` (content script for `https://luma.com/check-in/*/scan?tab=approved*`), `extension/background.js` (WebSocket client), `greeter/server.py` (add `GET /ws`), `greeter/voice.py` (tools), `greeter/main.py`
+
+**Interfaces:**
+- Produces:
+  - `Guest`, a frozen dataclass: `id: str`, `full_name: str`, `status: Literal["approved", "pending", "declined"]`, `checked_in: bool`
+  - `match_by_first_name(heard: str, guests: list[Guest]) -> list[Guest]`: only approved guests who aren't checked in, where `first_name(guest.full_name)` fuzzy-matches `heard` (case-insensitive; `difflib.SequenceMatcher` ratio of at least 0.8, or an exact prefix of at least 3 characters).
+  - `match_by_full_name(heard_first: str, heard_last: str, guests) -> list[Guest]`: same filter, also matching the last token of the name with a ratio of at least 0.75.
+  - Server WebSocket `GET /ws`. The extension sends `{"type": "guests", "guests": [Guest-like dicts]}` whenever the list changes. The app sends `{"type": "check_in", "id": str}`, and the extension replies `{"type": "check_in_result", "id": str, "ok": bool}`. `ok` is true only once the list shows that guest as checked in.
+  - `GuestBook` (in `guests.py`) holds the latest list. `async check_in(id: str, timeout_s: float = 8.0) -> bool` sends the command and waits for the result, and returns False on timeout.
+  - Realtime tools in `voice.py`: `find_guest(first_name: str, last_name: str | None = None)` returns `{"matches": [{"id", "full_name"}], "attempts_left": int}`, and `check_in_guest(id: str)` returns `{"ok": bool}`.
+  - In `main.py`, when the arrival prompt was said and no scan arrives within 10 s, queue: `Hmm, sorry, I couldn't read your ticket — what's your first name?` and enable the tools for that visit.
+
+- [ ] **Step 1: Write the failing tests**
+
+```python
+G = lambda i, n, st="approved", ci=False: Guest(i, n, st, ci)
+GUESTS = [G("1", "Alan Philip"), G("2", "Alan Smith"), G("3", "Sarah Chen"), G("4", "Sam Lee", ci=True), G("5", "Mia Ng", st="pending")]
+
+def test_unique_first_name():
+    assert [g.id for g in match_by_first_name("sarah", GUESTS)] == ["3"]
+
+def test_mishearing_tolerated():
+    assert [g.id for g in match_by_first_name("Sara", GUESTS)] == ["3"]
+
+def test_ambiguous_returns_all():
+    assert {g.id for g in match_by_first_name("Alan", GUESTS)} == {"1", "2"}
+
+def test_last_name_disambiguates():
+    assert [g.id for g in match_by_full_name("Alan", "Phillip", GUESTS)] == ["1"]
+
+def test_checked_in_and_pending_excluded():
+    assert match_by_first_name("Sam", GUESTS) == [] and match_by_first_name("Mia", GUESTS) == []
+```
+
+- [ ] **Step 2: Run the tests and check they fail**
+
+Run: `.venv/bin/python -m pytest tests/test_guests.py -v`
+Expected: FAIL.
+
+- [ ] **Step 3: Implement the matchers, `GuestBook` and `/ws`.** Add a server test where a fake WebSocket client receives `check_in` and replies `ok: true`, and `GuestBook.check_in` returns True. Add a second test with no reply, where `timeout_s=0.1` makes it return False.
+
+- [ ] **Step 4: Run the tests and check they pass**
+
+Run: `.venv/bin/python -m pytest tests/test_guests.py tests/test_server.py -v`
+Expected: PASS.
+
+- [ ] **Step 5: Build `extension/list.js` with the host.** Open the List view (`…/scan?tab=approved`) in a second tab and capture its guest-list API response through the same MAIN-world fetch wrapper. Map it to `Guest` dicts and send them. For `check_in`, find that guest's row and click its check-in control, then wait until the row or the API shows them checked in. Use the test guest, then undo the check-in in Luma.
+
+- [ ] **Step 6: Add the tools and instructions.** `build_instructions` gains the rules: offer name check-in only after a QR attempt failed or the guest says it won't scan; call `find_guest` with the first name; with exactly one match, ask "Is that {full name}?" and call `check_in_guest` only after a clear yes; with several matches, ask for the last name and call `find_guest` again; with no match after two attempts, send them to the front desk; on `ok: true`, say "Easy — you're checked in! MLAI welcomes you to the OpenAI Dev Day!" Extend the Task 7 test to check that "Is that" and "front desk" appear in the instructions.
+
+- [ ] **Step 7: Dry run with the host.** Using the iPhone 12 (which won't scan), go through the flow end to end with the test guest. Expected: the Luma count goes up by 1 and Reachy confirms. Then try a name that isn't on the list twice. Expected: the front-desk line. Undo the test check-in.
+
+- [ ] **Step 8: Commit** with `feat: name-based check-in fallback via Luma list view`.
