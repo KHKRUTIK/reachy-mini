@@ -41,6 +41,7 @@ Everything runs on the host MacBook with Reachy plugged in by USB **and** its ow
 | Luma checks people in but Reachy says nothing | Is the app running? `curl -s localhost:8765/health` should return `{"ok": true}`. Is the extension enabled? Reload it in `chrome://extensions`, then reload the scanner tab. |
 | No voice at all | Check `OPENAI_API_KEY` in `~/Projects/reachy-mini/.env`, look for `realtime connected` in the app terminal, and check the volume (step 3). |
 | Head stuck or not moving, "Motor communication error" | Check the power. Then restart the daemon (step 2) and the app (step 5). |
+| Reachy only talks when someone scans: he ignores people walking up, won't chat, and gives no compliments | The daemon didn't connect to the camera when it started. Check with `grep -c "cannot reach the camera" ~/Projects/reachy-mini/daemon.log`: any number above 0 means the camera feed is missing. Also, at startup the app log shows `Using WebRTC backend` instead of `Using LOCAL backend`. Fix: stop the app, restart the daemon (step 2), start the app (step 5), then reload the scanner tab and check Express Mode is on. |
 | Head keeps following faces after stopping | `curl -X POST localhost:8000/api/media/tracking/disable` |
 | Camera busy or black in Chrome | Close other apps using the camera and reload the scanner tab. Chrome and the daemon can share the camera. |
 
