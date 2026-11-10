@@ -5,3 +5,4 @@ __pycache__/
 .env
 logs/
 data/event_info.md
+vendor/
