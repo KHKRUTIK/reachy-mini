@@ -63,3 +63,10 @@ async def test_express_off_accepted(aiohttp_client, tmp_path):
     c = await aiohttp_client(make_app(q, tmp_path / "d.log", clock=lambda: 4.0))
     r = await c.post("/scan", json={"kind": "express_off", "name": None})
     assert r.status == 200 and q.get_nowait() == ScanResult("express_off", None, 4.0)
+
+
+async def test_non_json_content_type_rejected(aiohttp_client, tmp_path):
+    q = asyncio.Queue()
+    c = await aiohttp_client(make_app(q, tmp_path / "d.log"))
+    r = await c.post("/scan", data='{"kind":"success","name":"X"}', headers={"Content-Type": "text/plain"})
+    assert r.status == 415 and q.empty()

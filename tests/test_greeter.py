@@ -8,7 +8,7 @@ from greeter.lines import FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE
 
 class FakeSpeech:
     def __init__(self): self.lines = []
-    async def put(self, text): self.lines.append(text)
+    async def put(self, text, max_age_s=None): self.lines.append(text)
 
 
 class FakeMoves:
@@ -139,3 +139,42 @@ async def test_deliberate_rescan_says_all_set():
         "Welcome, Luis! MLAI welcomes you to the OpenAI Dev Day!",
         "You're all checked in, Luis! Take a seat whenever you're ready.",
     ]
+
+
+async def test_compliment_dropped_if_another_welcome_came_after():
+    g, speech, _ = make(compliment="Love your shirt!", delay=0.05)
+    await g.handle_scan(R("success", "Alice", 0))
+    await g.handle_scan(R("success", "Ben", 0.5))
+    await g.drain()
+    # Alice's compliment would land after Ben's welcome -> dropped; only Ben's own remains.
+    assert speech.lines == [
+        "Welcome, Alice! MLAI welcomes you to the OpenAI Dev Day!",
+        "Welcome, Ben! MLAI welcomes you to the OpenAI Dev Day!",
+        "Love your shirt!",
+    ]
+
+
+async def test_moves_never_overlap():
+    g, _, _ = make()
+    active, peak = 0, 0
+    async def slow_move():
+        nonlocal active, peak
+        active += 1; peak = max(peak, active)
+        await asyncio.sleep(0.05)
+        active -= 1
+    g._moves.welcome = slow_move
+    await g.handle_scan(R("success", "Alice", 0))
+    await g.handle_scan(R("success", "Ben", 0.5))
+    await g.drain()
+    assert peak == 1
+
+
+async def test_welcome_lines_carry_a_max_age():
+    class AgeSpeech(FakeSpeech):
+        async def put(self, text, max_age_s=None):
+            self.lines.append((text, max_age_s))
+    g, _, _ = make()
+    g._speech = AgeSpeech()
+    await g.handle_scan(R("success", "Sam", 0))
+    await g.drain()
+    assert g._speech.lines[0][1] == 10.0

@@ -20,6 +20,8 @@ def make_app(
     clock: Callable[[], float] = time.monotonic,
 ) -> web.Application:
     async def scan(request: web.Request) -> web.Response:
+        if request.content_type != "application/json":  # blocks simple cross-site form/text posts
+            return web.json_response({"ok": False, "error": "json only"}, status=415)
         try:
             body = await request.json()
         except ValueError:
@@ -32,6 +34,8 @@ def make_app(
         return web.json_response({"ok": True})
 
     async def debug(request: web.Request) -> web.Response:
+        if request.content_type != "application/json":
+            return web.json_response({"ok": False, "error": "json only"}, status=415)
         try:
             body = await request.json()
         except ValueError:

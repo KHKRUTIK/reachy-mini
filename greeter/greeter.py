@@ -12,6 +12,9 @@ from greeter.lines import EXPRESS_OFF_LINE, FRONT_DESK_LINE, QR_PROMPT_LINE, WRO
 
 log = logging.getLogger(__name__)
 
+NAMED_LINE_MAX_AGE_S = 10.0   # never greet someone by name after they've likely walked off
+GENERIC_LINE_MAX_AGE_S = 15.0
+
 
 class Greeter:
     def __init__(
@@ -31,6 +34,8 @@ class Greeter:
         self._compliment_window_s = compliment_window_s
         self._tasks: set[asyncio.Task] = set()
         self.moving = False
+        self._move_lock = asyncio.Lock()
+        self._welcome_seq = 0
         self.conversation_active: Callable[[], bool] = lambda: False
         self._express_warned_at = -math.inf
         self.on_qr_prompt: Callable[[float], None] | None = None
@@ -45,25 +50,26 @@ class Greeter:
         decision = self._gate.decide(r)
         log.info("scan %s %r -> %s", r.kind, r.name, decision)
         if decision == "welcome":
-            await self._speech.put(welcome_line(r.name))  # queued first: the compliment can never jump ahead
-            self._spawn(self._compliment_after_welcome())
+            self._welcome_seq += 1
+            await self._speech.put(welcome_line(r.name), max_age_s=NAMED_LINE_MAX_AGE_S)  # queued before its compliment
+            self._spawn(self._compliment_after_welcome(self._welcome_seq))
             self._spawn(self._move(self._moves.welcome))
         elif decision == "welcome_back":
-            await self._speech.put(welcome_back_line(r.name))
+            await self._speech.put(welcome_back_line(r.name), max_age_s=NAMED_LINE_MAX_AGE_S)
             self._spawn(self._move(self._moves.welcome))
         elif decision == "all_set":
-            await self._speech.put(all_set_line(r.name))
+            await self._speech.put(all_set_line(r.name), max_age_s=NAMED_LINE_MAX_AGE_S)
         elif decision == "front_desk":
-            await self._speech.put(FRONT_DESK_LINE)
+            await self._speech.put(FRONT_DESK_LINE, max_age_s=GENERIC_LINE_MAX_AGE_S)
             self._spawn(self._move(self._moves.front_desk))
         elif decision == "wrong_code":
-            await self._speech.put(WRONG_CODE_LINE)
+            await self._speech.put(WRONG_CODE_LINE, max_age_s=GENERIC_LINE_MAX_AGE_S)
 
     async def handle_face(self, present: bool, now: float) -> None:
         if self.moving:
             return
         if self._arrival.update(present, now, can_prompt=not self.conversation_active()):
-            await self._speech.put(QR_PROMPT_LINE)
+            await self._speech.put(QR_PROMPT_LINE, max_age_s=GENERIC_LINE_MAX_AGE_S)
             self._spawn(self._move(self._moves.perk_up))
             if self.on_qr_prompt:
                 self.on_qr_prompt(now)
@@ -72,23 +78,27 @@ class Greeter:
         while self._tasks:
             await asyncio.gather(*list(self._tasks), return_exceptions=True)
 
-    async def _compliment_after_welcome(self) -> None:
+    async def _compliment_after_welcome(self, seq: int) -> None:
         try:
             text = await asyncio.wait_for(self._get_compliment(), self._compliment_window_s)
         except asyncio.TimeoutError:
             log.info("compliment too slow; dropped")
             return
+        if seq != self._welcome_seq:
+            log.info("compliment dropped: another guest was welcomed since")
+            return
         if text:
-            await self._speech.put(text)
+            await self._speech.put(text, max_age_s=NAMED_LINE_MAX_AGE_S)
 
     async def _move(self, fn: Callable[[], Awaitable[None]]) -> None:
-        self.moving = True
-        try:
-            await fn()
-        except Exception:
-            log.exception("move failed")
-        finally:
-            self.moving = False
+        async with self._move_lock:  # one move at a time; tracking resumes only after the last
+            self.moving = True
+            try:
+                await fn()
+            except Exception:
+                log.exception("move failed")
+            finally:
+                self.moving = False
 
     def _spawn(self, coro: Awaitable[None]) -> asyncio.Task:
         task = asyncio.ensure_future(coro)

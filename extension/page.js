@@ -58,6 +58,16 @@
   const origGUM = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
   navigator.mediaDevices.getUserMedia = async (constraints) => {
     const real = await origGUM(constraints);
+    try {
+      return await buildPipeline(real);
+    } catch (err) {
+      // Never break Luma's scanner: fall back to the plain camera.
+      post({ type: "debug", text: `camera pipeline failed, using plain camera: ${err}` });
+      return real;
+    }
+  };
+
+  async function buildPipeline(real) {
     const track = real.getVideoTracks()[0];
     if (!track) return real;
     const { width = 1920, height = 1080 } = track.getSettings();
@@ -75,6 +85,10 @@
     const shownAt = new Map();       // code -> last time shown
 
     const draw = () => {
+      try { drawFrame(); } catch (err) { /* keep the feed alive */ }
+      finally { video.requestVideoFrameCallback(draw); }
+    };
+    const drawFrame = () => {
       const now = performance.now();
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, width, height);
       if (overlay && now < overlay.until) {
@@ -103,16 +117,20 @@
           }).catch(() => {}).finally(() => { detecting = false; });
         }
       }
-      video.requestVideoFrameCallback(draw);
     };
     video.requestVideoFrameCallback(draw);
 
     const out = canvas.captureStream(30);
     const outTrack = out.getVideoTracks()[0];
     outTrack.getSettings = () => ({ ...track.getSettings(), width, height });
+    // Camera controls (torch, focus, constraints) go to the real camera track.
+    outTrack.getCapabilities = track.getCapabilities.bind(track);
+    outTrack.getConstraints = track.getConstraints.bind(track);
+    outTrack.applyConstraints = track.applyConstraints.bind(track);
+    for (const a of real.getAudioTracks()) out.addTrack(a);
     const origStop = outTrack.stop.bind(outTrack);
     outTrack.stop = () => { origStop(); track.stop(); };
     post({ type: "debug", text: `camera pipeline on: zoom x${zoom}, enhance=${enhance}, ${track.label} ${width}x${height}` });
     return out;
-  };
+  }
 })();

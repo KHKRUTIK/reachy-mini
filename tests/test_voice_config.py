@@ -55,3 +55,28 @@ def test_conversation_activity_window():
     v.note_activity(now=95.0)
     assert v.active_within(10.0, now=100.0) is True
     assert v.active_within(10.0, now=106.0) is False
+
+
+async def test_session_ends_when_event_loop_ends_and_mic_is_cancelled():
+    import asyncio
+    from greeter.voice import RealtimeVoice
+    v = RealtimeVoice(S, _Mini(), "x")
+    mic_cancelled = asyncio.Event()
+    async def mic():
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            mic_cancelled.set()
+            raise
+    async def events():
+        return  # server closed the socket cleanly
+    v._mic_loop, v._event_loop = mic, events
+    await asyncio.wait_for(v._run_session(), 1.0)
+    assert mic_cancelled.is_set()
+
+
+async def test_say_exact_gives_up_when_not_connected():
+    import asyncio
+    from greeter.voice import RealtimeVoice
+    v = RealtimeVoice(S, _Mini(), "x")
+    await asyncio.wait_for(v.say_exact("hi", connect_timeout_s=0.05), 1.0)  # must not hang

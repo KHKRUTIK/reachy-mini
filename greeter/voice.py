@@ -103,9 +103,13 @@ class RealtimeVoice:
         now = time.monotonic() if now is None else now
         return now - self._last_activity < seconds
 
-    async def say_exact(self, text: str, timeout_s: float = 20.0) -> None:
+    async def say_exact(self, text: str, timeout_s: float = 20.0, connect_timeout_s: float = 5.0) -> None:
         """Speak ``text`` verbatim (out-of-band), interrupting any chat, and wait until it has played."""
-        await self._connected.wait()
+        try:
+            await asyncio.wait_for(self._connected.wait(), connect_timeout_s)
+        except asyncio.TimeoutError:
+            log.warning("voice not connected; skipped line: %r", text)
+            return
         await self._interrupt()
         tag = uuid.uuid4().hex
         done = asyncio.get_running_loop().create_future()
@@ -135,7 +139,8 @@ class RealtimeVoice:
                     self._connected.set()
                     log.info("realtime connected (%s)", self._settings.realtime_model)
                     backoff = 1.0
-                    await asyncio.gather(self._mic_loop(), self._event_loop())
+                    await self._run_session()
+                    log.warning("realtime session closed; reconnecting")
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -150,6 +155,19 @@ class RealtimeVoice:
             backoff = min(backoff * 2, 30.0)
 
     # ---- internals --------------------------------------------------------------------
+
+    async def _run_session(self) -> None:
+        """Run mic + event loops; when either ends or fails, stop the other (never leave one orphaned)."""
+        tasks = [asyncio.create_task(self._mic_loop()), asyncio.create_task(self._event_loop())]
+        try:
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for t in tasks:
+                t.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        for t in done:
+            if not t.cancelled() and t.exception():
+                raise t.exception()
 
     async def _mic_loop(self) -> None:
         media = self._mini.media

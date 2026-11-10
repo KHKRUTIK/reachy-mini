@@ -45,3 +45,18 @@ async def test_failed_line_does_not_stop_queue():
     await asyncio.sleep(0.05)
     task.cancel()
     assert spoken == ["good"]
+
+
+async def test_stale_lines_are_dropped():
+    spoken = []
+    async def say(t):
+        await asyncio.sleep(0.1)
+        spoken.append(t)
+    q = SpeechQueue(say)
+    task = asyncio.create_task(q.run())
+    await q.put("first")
+    await q.put("stale welcome", max_age_s=0.05)   # waits 0.1 s behind "first" -> too old
+    await q.put("fresh", max_age_s=5)
+    await asyncio.sleep(0.35)
+    task.cancel()
+    assert spoken == ["first", "fresh"]

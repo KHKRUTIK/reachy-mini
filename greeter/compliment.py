@@ -24,13 +24,21 @@ def crop_below_face(frame: np.ndarray, faces: list) -> np.ndarray | None:
     """Return the region below the largest face's chin, or None (never a crop that could include a face)."""
     if not faces:
         return None
-    x, y, w, h = max(faces, key=lambda f: f.bbox[2] * f.bbox[3]).bbox
+    guest = max(faces, key=lambda f: f.bbox[2] * f.bbox[3])
+    x, y, w, h = guest.bbox
     height, width = frame.shape[:2]
     top = int(y + h + 0.15 * h)
     cx = x + w / 2
     left, right = max(0, int(cx - 1.5 * w)), min(width, int(cx + 1.5 * w))
     if height - top < MIN_CROP_HEIGHT or right <= left:
         return None
+    for f in faces:  # e.g. a shorter companion standing behind the guest
+        if f is guest:
+            continue  # the crop already starts below the guest's own chin
+        fx, fy, fw, fh = f.bbox
+        mx, my = 0.2 * fw, 0.2 * fh
+        if fx - mx < right and fx + fw + mx > left and fy - my < height and fy + fh + my > top:
+            return None
     return frame[top:height, left:right]
 
 

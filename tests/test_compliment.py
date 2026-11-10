@@ -70,3 +70,15 @@ async def test_suggest_returns_none_on_timeout():
 
 async def test_suggest_returns_none_on_error():
     assert await suggest_compliment(FakeClient(error=RuntimeError("api down")), "m", b"jpg") is None
+
+
+def test_crop_rejected_when_another_face_is_inside_it():
+    tall = face(600, 100, 100, 120)        # crop: y 238..720, x 500..800
+    companion = face(620, 400, 80, 90)     # shorter person behind, face inside that region
+    assert crop_below_face(FRAME, [tall, companion]) is None
+
+
+def test_crop_kept_when_other_face_is_outside_it():
+    tall = face(600, 100, 100, 120)
+    far_left = face(50, 300, 80, 90)       # beside, outside the crop's x-range
+    assert crop_below_face(FRAME, [tall, far_left]) is not None
