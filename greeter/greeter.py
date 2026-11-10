@@ -21,7 +21,7 @@ class Greeter:
         gate: CheckinGate,
         arrival: ArrivalPrompter,
         get_compliment: Callable[[], Awaitable[str | None]],
-        compliment_window_s: float = 4.0,
+        compliment_window_s: float = 6.0,
     ) -> None:
         self._speech = speech
         self._moves = moves

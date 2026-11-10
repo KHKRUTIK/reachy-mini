@@ -10,11 +10,11 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 PROMPT = (
-    "This photo shows a person's clothing from the shoulders down. If there is a genuinely "
-    "distinctive, positive detail about their clothing or accessories (a design, pattern, colour, "
-    "slogan, accessory), reply with ONE short, warm compliment of at most 12 words, addressed to "
-    "them as 'you'. Never mention body, face, age, weight, or anything personal. If nothing stands "
-    "out, reply exactly NONE."
+    "This photo shows a person's outfit from the shoulders down. Find something nice to say about "
+    "their clothing or accessories: a colour, a design or print, a logo or slogan, the style, a "
+    "jacket, a bag, a lanyard. Reply with ONE short, warm, specific compliment of at most 12 words, "
+    "addressed to them as 'you'. Never mention body, face, age, weight, or anything personal. "
+    "Only if the image shows no clothing at all (blank, too dark, or no person), reply exactly NONE."
 )
 
 MIN_CROP_HEIGHT = 80
@@ -56,5 +56,7 @@ async def suggest_compliment(client, model: str, crop_jpeg: bytes, timeout_s: fl
         return None
     text = (getattr(response, "output_text", None) or "").strip()
     if not text or text.strip(" .!").upper() == "NONE":
+        log.info("compliment: model found nothing to say")
         return None
+    log.info("compliment: %s", text)
     return text

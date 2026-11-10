@@ -75,9 +75,11 @@ async def amain() -> None:
         async def get_compliment() -> str | None:
             frame = mini.media.get_frame()  # in memory only, never saved
             if frame is None:
+                log.info("compliment: no camera frame")
                 return None
             crop = crop_below_face(frame, await asyncio.to_thread(detector.detect, frame))
             if crop is None:
+                log.info("compliment: no face found or too little clothing in view; nothing sent")
                 return None
             ok, jpeg = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 80])
             return await suggest_compliment(openai_client, settings.compliment_model, jpeg.tobytes()) if ok else None
