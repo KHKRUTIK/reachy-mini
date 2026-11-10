@@ -16,13 +16,14 @@ from reachy_mini.vision.face_detector import FaceDetector
 
 from greeter.arrival import ArrivalPrompter
 from greeter.checkin import CheckinGate, ScanResult
-from greeter.compliment import crop_below_face, suggest_compliment
+from greeter.compliment import crop_below_face, rate_outfit, suggest_compliment
 from greeter.config import Settings, load_settings
 from greeter.event_info import build_instructions, fetch_event_text
 from greeter.greeter import Greeter
 from greeter.robot import Moves
 from greeter.server import make_app, start_server
 from greeter.speech import SpeechQueue
+from greeter.tools import TOOLS, make_tool_handler, rate_fit
 from greeter.voice import RealtimeVoice
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -84,9 +85,24 @@ async def amain() -> None:
             ok, jpeg = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 80])
             return await suggest_compliment(openai_client, settings.compliment_model, jpeg.tobytes()) if ok else None
 
-        voice = RealtimeVoice(settings, mini, instructions)
+        async def rate_current_fit() -> dict:
+            out = await rate_fit(
+                mini.media.get_frame,  # in memory only, never saved
+                detector.detect,
+                lambda jpeg: rate_outfit(openai_client, settings.compliment_model, jpeg),
+            )
+            log.info("rate_outfit -> %s", "rating" if "rating" in out else out["say"][:40])
+            return out
+
+        greeter_ref: list[Greeter] = []
+
+        async def act_sad() -> None:
+            await greeter_ref[0].act_sad()
+
+        voice = RealtimeVoice(settings, mini, instructions, TOOLS, make_tool_handler(rate_current_fit, act_sad))
         speech = SpeechQueue(voice.say_exact)
         greeter = Greeter(speech, Moves(mini, settings.daemon_url), CheckinGate(), ArrivalPrompter(), get_compliment)
+        greeter_ref.append(greeter)
         greeter.conversation_active = lambda: voice.active_within(10.0)
 
         scans: asyncio.Queue[ScanResult] = asyncio.Queue()

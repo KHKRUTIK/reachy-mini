@@ -46,3 +46,9 @@ async def test_fetch_without_cache_raises(tmp_path, monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", boom)
     with pytest.raises(httpx.ConnectError):
         await fetch_event_text("https://luma.com/x", tmp_path / "none.md")
+
+
+def test_instructions_include_robot_self_knowledge():
+    text = build_instructions("event", "")
+    for fact in ("Reachy Mini Lite", "Pollen Robotics", "Hugging Face", "antennas", "rate", "can't walk"):
+        assert fact in text

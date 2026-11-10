@@ -82,3 +82,16 @@ def test_crop_kept_when_other_face_is_outside_it():
     tall = face(600, 100, 100, 120)
     far_left = face(50, 300, 80, 90)       # beside, outside the crop's x-range
     assert crop_below_face(FRAME, [tall, far_left]) is not None
+
+
+async def test_rate_outfit_returns_rating():
+    from greeter.compliment import rate_outfit
+    c = FakeClient("Solid 9 out of 10! That print is doing a lot of work.")
+    assert await rate_outfit(c, "m", b"jpg") == "Solid 9 out of 10! That print is doing a lot of work."
+    assert "out of 10" in c.kwargs["input"][0]["content"][0]["text"]
+
+
+async def test_rate_outfit_none_and_errors():
+    from greeter.compliment import rate_outfit
+    assert await rate_outfit(FakeClient("NONE"), "m", b"jpg") is None
+    assert await rate_outfit(FakeClient(error=RuntimeError("x")), "m", b"jpg") is None

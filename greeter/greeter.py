@@ -74,6 +74,11 @@ class Greeter:
             if self.on_qr_prompt:
                 self.on_qr_prompt(now)
 
+    async def act_sad(self) -> None:
+        """Droop sadly (someone was mean). Runs in the background so Reachy can answer straight away."""
+        log.info("acting sad")
+        self._spawn(self._move(self._moves.sad))
+
     async def drain(self) -> None:
         while self._tasks:
             await asyncio.gather(*list(self._tasks), return_exceptions=True)

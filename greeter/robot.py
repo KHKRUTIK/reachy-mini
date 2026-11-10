@@ -37,6 +37,16 @@ class Moves:
             (dict(head=_pose(), antennas=[0.0, 0.0]), 0.7),
         ])
 
+    async def sad(self) -> None:
+        """Head drops, antennas droop, a slow little shake, then a hopeful recovery (~4 s)."""
+        await self._sequence([
+            (dict(head=_pose(pitch=22), antennas=np.deg2rad([-70, 70])), 1.0),
+            (dict(head=_pose(pitch=24, roll=-6)), 0.6),
+            (dict(head=_pose(pitch=24, roll=6)), 0.8),
+            (dict(head=_pose(pitch=20)), 0.6),
+            (dict(head=_pose(), antennas=[0.0, 0.0]), 1.0),
+        ])
+
     async def perk_up(self) -> None:
         """Small curious antenna lift (~0.8 s)."""
         await self._sequence([

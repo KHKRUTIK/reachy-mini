@@ -42,7 +42,24 @@ def crop_below_face(frame: np.ndarray, faces: list) -> np.ndarray | None:
     return frame[top:height, left:right]
 
 
+RATE_PROMPT = (
+    "A guest asked a friendly robot to rate their outfit. This photo shows it from the shoulders down. "
+    "Reply with ONE short, playful rating sentence of at most 20 words that gives a score out of 10 "
+    "(always between 7 and 10) and names one specific thing you like: a colour, print, logo, layer, "
+    "or accessory. Address them as 'you'. Only rate the clothes; never mention body, face, age, or weight. "
+    "Only if the image shows no clothing at all (blank, too dark, or no person), reply exactly NONE."
+)
+
+
 async def suggest_compliment(client, model: str, crop_jpeg: bytes, timeout_s: float = 4.0) -> str | None:
+    return await _ask_about_outfit(client, model, crop_jpeg, PROMPT, timeout_s, max_tokens=60, label="compliment")
+
+
+async def rate_outfit(client, model: str, crop_jpeg: bytes, timeout_s: float = 6.0) -> str | None:
+    return await _ask_about_outfit(client, model, crop_jpeg, RATE_PROMPT, timeout_s, max_tokens=80, label="fit rating")
+
+
+async def _ask_about_outfit(client, model, crop_jpeg, prompt, timeout_s, max_tokens, label) -> str | None:
     data_url = "data:image/jpeg;base64," + base64.b64encode(crop_jpeg).decode("ascii")
     try:
         response = await asyncio.wait_for(
@@ -51,20 +68,20 @@ async def suggest_compliment(client, model: str, crop_jpeg: bytes, timeout_s: fl
                 input=[{
                     "role": "user",
                     "content": [
-                        {"type": "input_text", "text": PROMPT},
+                        {"type": "input_text", "text": prompt},
                         {"type": "input_image", "image_url": data_url},
                     ],
                 }],
-                max_output_tokens=60,
+                max_output_tokens=max_tokens,
             ),
             timeout=timeout_s,
         )
     except Exception as e:  # timeout, network, API errors: no compliment is fine
-        log.info("compliment skipped: %s", e)
+        log.info("%s skipped: %s", label, e)
         return None
     text = (getattr(response, "output_text", None) or "").strip()
     if not text or text.strip(" .!").upper() == "NONE":
-        log.info("compliment: model found nothing to say")
+        log.info("%s: model found nothing to say", label)
         return None
-    log.info("compliment: %s", text)
+    log.info("%s: %s", label, text)
     return text
