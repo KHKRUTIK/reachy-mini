@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Reachy Greeter Bridge",
+  "version": "0.1.0",
+  "description": "Relays Luma check-in scanner results to the local Reachy greeter app.",
+  "host_permissions": ["http://127.0.0.1:8765/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://luma.com/check-in/*"],
+      "js": ["vendor/qrcode.js", "page.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://luma.com/check-in/*"],
+      "js": ["parse.js", "content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

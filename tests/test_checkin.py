@@ -32,3 +32,12 @@ def test_different_people_are_independent():
     g = CheckinGate()
     g.decide(R("success", "Sam Lee", 0))
     assert g.decide(R("success", "Ann Wu", 1)) == "welcome"
+
+def test_wrong_code_gets_coaching():
+    assert CheckinGate().decide(R("wrong_code", None, 0)) == "wrong_code"
+
+def test_repeated_wrong_code_within_15s_is_ignored():
+    g = CheckinGate()
+    assert g.decide(R("wrong_code", None, 0)) == "wrong_code"
+    assert g.decide(R("wrong_code", None, 5)) == "ignore"
+    assert g.decide(R("wrong_code", None, 16)) == "wrong_code"

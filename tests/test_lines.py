@@ -26,3 +26,7 @@ def test_welcome_line_without_name():
 def test_fixed_lines():
     assert FRONT_DESK_LINE == "Hmm, I couldn't check you in. Please find a host at the front desk and they'll sort you out!"
     assert QR_PROMPT_LINE == "Hi! If you haven't checked in yet, just show me the QR code on your Luma ticket."
+
+def test_wrong_code_line():
+    from greeter.lines import WRONG_CODE_LINE
+    assert WRONG_CODE_LINE == "Ooh, that's the event link! Open your ticket instead, the one with your name under the QR code."

@@ -4,6 +4,8 @@ from __future__ import annotations
 FRONT_DESK_LINE = "Hmm, I couldn't check you in. Please find a host at the front desk and they'll sort you out!"
 QR_PROMPT_LINE = "Hi! If you haven't checked in yet, just show me the QR code on your Luma ticket."
 
+WRONG_CODE_LINE = "Ooh, that's the event link! Open your ticket instead, the one with your name under the QR code."
+
 _HONORIFICS = {"dr", "mr", "mrs", "ms", "mx", "prof"}
 
 

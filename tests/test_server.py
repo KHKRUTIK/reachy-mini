@@ -42,3 +42,10 @@ async def test_health(aiohttp_client, tmp_path):
     c = await aiohttp_client(make_app(asyncio.Queue(), tmp_path / "d.log"))
     r = await c.get("/health")
     assert r.status == 200 and await r.json() == {"ok": True}
+
+
+async def test_wrong_code_accepted(aiohttp_client, tmp_path):
+    q = asyncio.Queue()
+    c = await aiohttp_client(make_app(q, tmp_path / "d.log", clock=lambda: 2.0))
+    r = await c.post("/scan", json={"kind": "wrong_code", "name": None})
+    assert r.status == 200 and q.get_nowait() == ScanResult("wrong_code", None, 2.0)

@@ -1,0 +1,1 @@
+{"status":"success","message":"Test Guest checked in.","guest":{"api_id":"gst-TEST","approval_status":"approved","event_api_id":"evt-ZLcgMdLTqHF8bK3","name":"Test Guest","first_name":"Test","last_name":"Guest","email":"test@example.com","last_checked_in_at":"2026-11-10T03:22:59.180Z"}}

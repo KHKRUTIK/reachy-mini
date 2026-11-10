@@ -4,12 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-Decision = Literal["welcome", "front_desk", "ignore"]
+Decision = Literal["welcome", "front_desk", "wrong_code", "ignore"]
 
 
 @dataclass(frozen=True)
 class ScanResult:
-    kind: Literal["success", "failure"]
+    kind: Literal["success", "failure", "wrong_code"]
     name: str | None
     at: float  # monotonic seconds
 
@@ -26,10 +26,16 @@ class CheckinGate:
         self._failure_repeat_s = failure_repeat_s
         self._welcomed: dict[str, float] = {}
         self._front_desk: dict[str | None, float] = {}
+        self._wrong_code_at: float | None = None
 
     def decide(self, r: ScanResult) -> Decision:
         self._prune(r.at)
         key = _key(r.name)
+        if r.kind == "wrong_code":
+            if self._wrong_code_at is not None and r.at - self._wrong_code_at < self._failure_repeat_s:
+                return "ignore"
+            self._wrong_code_at = r.at
+            return "wrong_code"
         if key is not None and key in self._welcomed:
             return "ignore"
         if r.kind == "success":
