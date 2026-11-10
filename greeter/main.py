@@ -94,6 +94,12 @@ async def amain() -> None:
             )
         finally:
             await runner.cleanup()
+            # Leave the robot still: stop the daemon's head tracking we turned on at startup.
+            try:
+                async with httpx.AsyncClient(timeout=3.0) as client:
+                    await client.post(f"{settings.daemon_url}/api/media/tracking/disable")
+            except httpx.HTTPError:
+                log.warning("could not disable head tracking on exit")
 
 
 def main() -> None:
