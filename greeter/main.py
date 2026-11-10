@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import signal
 import time
 from pathlib import Path
 
@@ -106,7 +107,12 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     for noisy in ("httpx", "zeroconf", "aiohttp.access"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
-    asyncio.run(amain())
+    # Treat `pkill` (SIGTERM) like Ctrl+C so cleanup runs and head tracking is switched off.
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    try:
+        asyncio.run(amain())
+    except KeyboardInterrupt:
+        log.info("greeter stopped")
 
 
 if __name__ == "__main__":
