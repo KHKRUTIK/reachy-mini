@@ -85,6 +85,7 @@ async def amain() -> None:
         voice = RealtimeVoice(settings, mini, instructions)
         speech = SpeechQueue(voice.say_exact)
         greeter = Greeter(speech, Moves(mini, settings.daemon_url), CheckinGate(), ArrivalPrompter(), get_compliment)
+        greeter.conversation_active = lambda: voice.active_within(10.0)
 
         scans: asyncio.Queue[ScanResult] = asyncio.Queue()
         runner = await start_server(make_app(scans, ROOT / "logs" / "scanner-debug.log"), settings.server_port)

@@ -6,6 +6,8 @@ QR_PROMPT_LINE = "Hi! If you haven't checked in yet, just show me the QR code on
 
 WRONG_CODE_LINE = "Ooh, that's the event link! Open your ticket instead, the one with your name under the QR code."
 
+EXPRESS_OFF_LINE = "Heads up, hosts! The Luma scanner isn't in Express mode, so I can't check people in. Please switch Express on."
+
 _HONORIFICS = {"dr", "mr", "mrs", "ms", "mx", "prof"}
 
 

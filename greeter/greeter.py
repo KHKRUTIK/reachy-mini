@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from typing import Any, Awaitable, Callable
 
 from greeter.arrival import ArrivalPrompter
 from greeter.checkin import CheckinGate, ScanResult
-from greeter.lines import FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE, welcome_back_line, welcome_line
+from greeter.lines import EXPRESS_OFF_LINE, FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE, welcome_back_line, welcome_line
 
 log = logging.getLogger(__name__)
 
@@ -30,9 +31,16 @@ class Greeter:
         self._compliment_window_s = compliment_window_s
         self._tasks: set[asyncio.Task] = set()
         self.moving = False
+        self.conversation_active: Callable[[], bool] = lambda: False
+        self._express_warned_at = -math.inf
         self.on_qr_prompt: Callable[[float], None] | None = None
 
     async def handle_scan(self, r: ScanResult) -> None:
+        if r.kind == "express_off":
+            if r.at - self._express_warned_at >= 60.0:
+                self._express_warned_at = r.at
+                await self._speech.put(EXPRESS_OFF_LINE)
+            return
         self._arrival.note_scan(r.at)
         decision = self._gate.decide(r)
         log.info("scan %s %r -> %s", r.kind, r.name, decision)
@@ -52,7 +60,7 @@ class Greeter:
     async def handle_face(self, present: bool, now: float) -> None:
         if self.moving:
             return
-        if self._arrival.update(present, now):
+        if self._arrival.update(present, now, can_prompt=not self.conversation_active()):
             await self._speech.put(QR_PROMPT_LINE)
             self._spawn(self._move(self._moves.perk_up))
             if self.on_qr_prompt:

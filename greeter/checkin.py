@@ -9,7 +9,7 @@ Decision = Literal["welcome", "welcome_back", "front_desk", "wrong_code", "ignor
 
 @dataclass(frozen=True)
 class ScanResult:
-    kind: Literal["success", "failure", "wrong_code", "already"]
+    kind: Literal["success", "failure", "wrong_code", "already", "express_off"]
     name: str | None
     at: float  # monotonic seconds
 

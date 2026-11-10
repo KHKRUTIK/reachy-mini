@@ -86,6 +86,7 @@ class RealtimeVoice:
         self._discarded: set[str] = set()
         self._current_response: str | None = None
         self._playback_end = 0.0
+        self._last_activity = -1e9
         self._in_rate = mini.media.get_input_audio_samplerate()
         self._out_rate = mini.media.get_output_audio_samplerate()
 
@@ -93,6 +94,14 @@ class RealtimeVoice:
 
     def set_listening(self, enabled: bool) -> None:
         self._listening = enabled
+
+    def note_activity(self, now: float | None = None) -> None:
+        self._last_activity = time.monotonic() if now is None else now
+
+    def active_within(self, seconds: float, now: float | None = None) -> bool:
+        """True if a guest spoke or Reachy was answering within the last ``seconds``."""
+        now = time.monotonic() if now is None else now
+        return now - self._last_activity < seconds
 
     async def say_exact(self, text: str, timeout_s: float = 20.0) -> None:
         """Speak ``text`` verbatim (out-of-band), interrupting any chat, and wait until it has played."""
@@ -160,12 +169,15 @@ class RealtimeVoice:
         async for event in self._conn:
             t = event.type
             if t == "input_audio_buffer.speech_started" and not self._forced_active:
+                self.note_activity()
                 self._flush_playback()
             elif t == "response.created":
                 self._current_response = event.response.id
             elif t == "response.output_audio.delta":
                 if event.response_id in self._discarded:
                     continue
+                if not self._forced_active:
+                    self.note_activity()
                 self._play(base64.b64decode(event.delta))
             elif t == "response.done":
                 self._on_response_done(event.response)

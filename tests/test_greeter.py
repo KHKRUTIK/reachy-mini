@@ -105,3 +105,24 @@ async def test_already_checked_in_says_welcome_back():
     await g.drain()
     assert speech.lines == ["Welcome back, Alan! You've already checked in, so take a seat whenever you're ready."]
     assert moves.calls == ["welcome"]
+
+
+async def test_no_qr_prompt_while_conversation_active():
+    g, speech, _ = make()
+    g.conversation_active = lambda: True
+    for t in range(8):
+        await g.handle_face(True, float(t))
+    assert speech.lines == []
+    g.conversation_active = lambda: False
+    await g.handle_face(True, 8.0)
+    await g.drain()
+    assert speech.lines == [QR_PROMPT_LINE]
+
+
+async def test_express_off_warning_is_spoken_once_per_minute():
+    from greeter.lines import EXPRESS_OFF_LINE
+    g, speech, _ = make()
+    await g.handle_scan(R("express_off", None, 0))
+    await g.handle_scan(R("express_off", None, 30))
+    await g.handle_scan(R("express_off", None, 61))
+    assert speech.lines == [EXPRESS_OFF_LINE, EXPRESS_OFF_LINE]

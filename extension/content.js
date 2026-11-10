@@ -1,7 +1,7 @@
 // Isolated-world script: turns Luma scanner results into /scan events for Reachy.
 // DEBUG = true also records page text and raw API bodies to /debug (contains guest data; logs/ only).
 const DEBUG = false;
-const { parseScanResponse, classifySeenCode } = globalThis.ReachyParse;
+const { parseScanResponse, classifySeenCode, isScannerPage } = globalThis.ReachyParse;
 const send = (msg) => { try { chrome.runtime.sendMessage(msg); } catch (_) {} };
 
 window.addEventListener("message", (e) => {
@@ -50,4 +50,35 @@ function start() {
   }
   send({ type: "debug", text: `bridge loaded on ${location.pathname}${location.search}` });
 }
+// --- Keep Luma's scanner in Express mode -------------------------------------------------------
+// After every reload Luma shows a "Scan Options" dialog (Standard / Express). We pick Express, the
+// same click a host would make. If the header still doesn't say "Express Mode On", Reachy warns.
+const leafWithText = (re) =>
+  [...document.querySelectorAll("button, label, [role=radio], [role=button], div, span")]
+    .filter((el) => re.test((el.innerText || "").trim()))
+    .sort((a, b) => (a.innerText || "").length - (b.innerText || "").length)[0];
+
+function chooseExpress() {
+  const text = document.body?.innerText || "";
+  if (!/Scan Options/.test(text) || !/Automatically check in/.test(text)) return false;
+  const option = leafWithText(/^Express\b[\s\S]*Automatically check in/) || leafWithText(/^Express$/);
+  const confirm = [...document.querySelectorAll("button")].find((b) => (b.innerText || "").trim() === "Confirm");
+  if (!option || !confirm) return false;
+  option.click();
+  setTimeout(() => confirm.click(), 250);
+  send({ type: "debug", text: "auto-selected Express mode" });
+  return true;
+}
+
+let offSince = null;
+function checkExpress() {
+  if (!isScannerPage(location.pathname, location.search)) { offSince = null; return; }
+  if (chooseExpress()) return;
+  const on = /Express Mode On/.test(document.body?.innerText || "");
+  if (on) { offSince = null; return; }
+  offSince = offSince ?? Date.now();
+  if (Date.now() - offSince > 8000) send({ type: "scan", kind: "express_off", name: null });
+}
+
 if (document.body) start(); else document.addEventListener("DOMContentLoaded", start);
+setInterval(checkExpress, 2000);

@@ -48,3 +48,12 @@ test("already-checked-in is its own kind, with the guest name", () => {
   const body = JSON.stringify({ status: "already-checked-in", message: "This guest is already checked in.", guest: { name: "Sam Lee" } });
   assert.deepEqual(parseScanResponse(EXPRESS, 200, body), { kind: "already", name: "Sam Lee" });
 });
+
+const { isScannerPage } = require("./parse.js");
+
+test("only the scanner view (not list or guest pages) needs Express mode", () => {
+  assert.equal(isScannerPage("/check-in/evt-ZLcgMdLTqHF8bK3/scan", ""), true);
+  assert.equal(isScannerPage("/check-in/evt-ZLcgMdLTqHF8bK3/scan", "?guest=gst-1"), true);
+  assert.equal(isScannerPage("/check-in/evt-ZLcgMdLTqHF8bK3/scan", "?tab=approved"), false);
+  assert.equal(isScannerPage("/check-in/evt-ZLcgMdLTqHF8bK3", ""), false);
+});

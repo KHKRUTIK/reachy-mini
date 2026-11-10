@@ -21,6 +21,11 @@
     return null;
   }
 
-  root.ReachyParse = { parseScanResponse, classifySeenCode };
+  // Express mode only matters on the camera scanner view (not the List tab or other pages).
+  function isScannerPage(pathname, search) {
+    return /\/check-in\/[^/]+\/scan\/?$/.test(pathname || "") && !/[?&]tab=/.test(search || "");
+  }
+
+  root.ReachyParse = { parseScanResponse, classifySeenCode, isScannerPage };
   if (typeof module !== "undefined") module.exports = root.ReachyParse;
 })(typeof globalThis !== "undefined" ? globalThis : this);

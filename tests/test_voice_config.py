@@ -37,3 +37,21 @@ def test_forced_response_is_out_of_band_and_exact():
     assert r["instructions"].endswith("Welcome, Sam!")
     assert "exactly" in r["instructions"]
     assert r["output_modalities"] == ["audio"]
+
+
+class _Media:
+    def get_input_audio_samplerate(self): return 16000
+    def get_output_audio_samplerate(self): return 16000
+
+
+class _Mini:
+    media = _Media()
+
+
+def test_conversation_activity_window():
+    from greeter.voice import RealtimeVoice
+    v = RealtimeVoice(S, _Mini(), "x")
+    assert v.active_within(10.0, now=100.0) is False
+    v.note_activity(now=95.0)
+    assert v.active_within(10.0, now=100.0) is True
+    assert v.active_within(10.0, now=106.0) is False
