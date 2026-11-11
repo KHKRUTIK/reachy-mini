@@ -49,7 +49,7 @@ Everything runs on the host MacBook with Reachy plugged in by USB **and** its ow
 
 | Situation | Line |
 |---|---|
-| New check-in | "Welcome, {First}! MLAI welcomes you to the OpenAI Dev Day!" (plus an optional clothing compliment) |
+| New check-in | "Welcome, {First}! MLAI welcomes you to the OpenAI Dev Day!" followed by a compliment: a unique detail if he can spot one, otherwise the colour or style ("That black shirt looks great on you!"), or "And can I just say, you're looking great today!" if he can't see the outfit |
 | Re-scan 10–60 s after the welcome | "You're all checked in, {First}! Take a seat whenever you're ready." |
 | Already checked in (later) | "Welcome back, {First}! You've already checked in, so take a seat whenever you're ready." |
 | Event-page QR instead of the ticket | "Ooh, that's the event link! Open your ticket instead, the one with your name under the QR code." |

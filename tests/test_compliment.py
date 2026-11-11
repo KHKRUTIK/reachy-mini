@@ -95,3 +95,8 @@ async def test_rate_outfit_none_and_errors():
     from greeter.compliment import rate_outfit
     assert await rate_outfit(FakeClient("NONE"), "m", b"jpg") is None
     assert await rate_outfit(FakeClient(error=RuntimeError("x")), "m", b"jpg") is None
+
+
+def test_compliment_prompt_always_finds_something():
+    from greeter.compliment import PROMPT
+    assert "always" in PROMPT.lower() and "colour" in PROMPT

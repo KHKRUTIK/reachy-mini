@@ -3,7 +3,7 @@ import asyncio
 from greeter.arrival import ArrivalPrompter
 from greeter.checkin import CheckinGate, ScanResult as R
 from greeter.greeter import Greeter
-from greeter.lines import FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE
+from greeter.lines import FALLBACK_COMPLIMENT, FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE
 
 
 class FakeSpeech:
@@ -31,7 +31,7 @@ async def test_success_welcomes_by_first_name():
     g, speech, moves = make()
     await g.handle_scan(R("success", "Sarah Chen", 0))
     await g.drain()
-    assert speech.lines == ["Welcome, Sarah! MLAI welcomes you to the OpenAI Dev Day!"]
+    assert speech.lines[0] == "Welcome, Sarah! MLAI welcomes you to the OpenAI Dev Day!"
     assert moves.calls == ["welcome"]
 
 
@@ -42,11 +42,18 @@ async def test_compliment_follows_welcome_when_quick():
     assert speech.lines == ["Welcome, Sam! MLAI welcomes you to the OpenAI Dev Day!", "Love your shirt!"]
 
 
-async def test_slow_compliment_is_dropped():
+async def test_slow_compliment_falls_back_to_generic():
     g, speech, _ = make(compliment="Love your shirt!", delay=0.5)
     await g.handle_scan(R("success", "Sam", 0))
     await g.drain()
-    assert speech.lines == ["Welcome, Sam! MLAI welcomes you to the OpenAI Dev Day!"]
+    assert speech.lines == ["Welcome, Sam! MLAI welcomes you to the OpenAI Dev Day!", FALLBACK_COMPLIMENT]
+
+
+async def test_no_compliment_falls_back_to_generic():
+    g, speech, _ = make(compliment=None)
+    await g.handle_scan(R("success", "Sam", 0))
+    await g.drain()
+    assert speech.lines == ["Welcome, Sam! MLAI welcomes you to the OpenAI Dev Day!", FALLBACK_COMPLIMENT]
 
 
 async def test_failure_sends_to_front_desk():
@@ -67,7 +74,7 @@ async def test_already_checked_in_after_welcome_is_silent():
     await g.handle_scan(R("success", "Sam", 0))
     await g.handle_scan(R("failure", "Sam", 5))
     await g.drain()
-    assert speech.lines == ["Welcome, Sam! MLAI welcomes you to the OpenAI Dev Day!"]
+    assert speech.lines == ["Welcome, Sam! MLAI welcomes you to the OpenAI Dev Day!", FALLBACK_COMPLIMENT]
 
 
 async def test_face_dwell_prompts_for_qr():
@@ -138,6 +145,7 @@ async def test_deliberate_rescan_says_all_set():
     assert speech.lines == [
         "Welcome, Luis! MLAI welcomes you to the OpenAI Dev Day!",
         "You're all checked in, Luis! Take a seat whenever you're ready.",
+        FALLBACK_COMPLIMENT,
     ]
 
 

@@ -1,6 +1,7 @@
 """Exact lines Reachy speaks, and first-name extraction."""
 from __future__ import annotations
 
+FALLBACK_COMPLIMENT = "And can I just say, you're looking great today!"
 FRONT_DESK_LINE = "Hmm, I couldn't check you in. Please find a host at the front desk and they'll sort you out!"
 QR_PROMPT_LINE = "Hi! If you haven't checked in yet, just show me the QR code on your Luma ticket."
 

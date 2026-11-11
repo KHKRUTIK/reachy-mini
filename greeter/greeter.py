@@ -8,7 +8,7 @@ from typing import Any, Awaitable, Callable
 
 from greeter.arrival import ArrivalPrompter
 from greeter.checkin import CheckinGate, ScanResult
-from greeter.lines import EXPRESS_OFF_LINE, FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE, all_set_line, welcome_back_line, welcome_line
+from greeter.lines import EXPRESS_OFF_LINE, FALLBACK_COMPLIMENT, FRONT_DESK_LINE, QR_PROMPT_LINE, WRONG_CODE_LINE, all_set_line, welcome_back_line, welcome_line
 
 log = logging.getLogger(__name__)
 
@@ -87,13 +87,12 @@ class Greeter:
         try:
             text = await asyncio.wait_for(self._get_compliment(), self._compliment_window_s)
         except asyncio.TimeoutError:
-            log.info("compliment too slow; dropped")
-            return
+            log.info("compliment too slow; using the generic one")
+            text = None
         if seq != self._welcome_seq:
             log.info("compliment dropped: another guest was welcomed since")
             return
-        if text:
-            await self._speech.put(text, max_age_s=NAMED_LINE_MAX_AGE_S)
+        await self._speech.put(text or FALLBACK_COMPLIMENT, max_age_s=NAMED_LINE_MAX_AGE_S)
 
     async def _move(self, fn: Callable[[], Awaitable[None]]) -> None:
         async with self._move_lock:  # one move at a time; tracking resumes only after the last

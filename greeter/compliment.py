@@ -10,11 +10,13 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 PROMPT = (
-    "This photo shows a person's outfit from the shoulders down. Find something nice to say about "
-    "their clothing or accessories: a colour, a design or print, a logo or slogan, the style, a "
-    "jacket, a bag, a lanyard. Reply with ONE short, warm, specific compliment of at most 12 words, "
-    "addressed to them as 'you'. Never mention body, face, age, weight, or anything personal. "
-    "Only if the image shows no clothing at all (blank, too dark, or no person), reply exactly NONE."
+    "This photo shows a person's outfit from the shoulders down. You must always give them a compliment. "
+    "Best: something unique and specific, like a design or print, a logo or slogan, a jacket, a bag, "
+    "jewellery, a lanyard, or a fun detail. If nothing stands out, compliment the colour or style of "
+    "what they're wearing, e.g. 'That black shirt looks great on you!'. Reply with ONE short, warm "
+    "compliment of at most 12 words, addressed to them as 'you'. Never mention body, face, age, weight, "
+    "or anything personal. Only if the image shows no clothing at all (blank, too dark, or no person), "
+    "reply exactly NONE."
 )
 
 MIN_CROP_HEIGHT = 80
