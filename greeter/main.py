@@ -41,7 +41,7 @@ def load_dotenv(path: Path) -> dict[str, str]:
     return env
 
 
-async def face_loop(settings: Settings, greeter: Greeter, voice: RealtimeVoice) -> None:
+async def face_loop(settings: Settings, greeter: Greeter, presence: dict) -> None:
     url = f"{settings.daemon_url}/api/media/tracking/face"
     async with httpx.AsyncClient(timeout=1.0) as client:
         while True:
@@ -50,7 +50,7 @@ async def face_loop(settings: Settings, greeter: Greeter, voice: RealtimeVoice) 
                 present = bool(data.get("face_target", {}).get("detected"))
             except (httpx.HTTPError, ValueError):
                 present = False
-            voice.set_listening(present)  # only listen to someone facing Reachy
+            presence["face"] = present
             await greeter.handle_face(present, time.monotonic())
             await asyncio.sleep(0.2)
 
@@ -99,11 +99,27 @@ async def amain() -> None:
         async def act_sad() -> None:
             await greeter_ref[0].act_sad()
 
-        voice = RealtimeVoice(settings, mini, instructions, TOOLS, make_tool_handler(rate_current_fit, act_sad))
+        voice = RealtimeVoice(settings, mini, instructions, TOOLS, make_tool_handler(rate_current_fit, act_sad, lambda: look_at_me()))
         speech = SpeechQueue(voice.say_exact)
         greeter = Greeter(speech, Moves(mini, settings.daemon_url), CheckinGate(), ArrivalPrompter(), get_compliment,
                           event_name=settings.event_name)
         greeter_ref.append(greeter)
+
+        def sees_face() -> bool:
+            frame = mini.media.get_frame()  # in memory only, never saved
+            return frame is not None and bool(detector.detect(frame))
+
+        async def look_at_me() -> bool:
+            return await greeter.find_person(sees_face, time.monotonic())
+
+        presence = {"face": False}
+
+        def heard_someone() -> None:
+            if not presence["face"] and not greeter.moving:  # a voice, but nobody in view: go find them
+                asyncio.get_running_loop().create_task(greeter.find_person(sees_face, time.monotonic(), auto=True))
+
+        voice.set_listening(True)  # always listen, even when nobody is in view
+        voice.on_guest_speech = heard_someone
         greeter.conversation_active = lambda: voice.active_within(10.0)
 
         scans: asyncio.Queue[ScanResult] = asyncio.Queue()
@@ -111,7 +127,7 @@ async def amain() -> None:
         log.info("greeter ready on http://127.0.0.1:%d", settings.server_port)
         try:
             await asyncio.gather(
-                voice.run(), speech.run(), scan_loop(scans, greeter), face_loop(settings, greeter, voice)
+                voice.run(), speech.run(), scan_loop(scans, greeter), face_loop(settings, greeter, presence)
             )
         finally:
             await runner.cleanup()

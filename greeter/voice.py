@@ -87,6 +87,7 @@ class RealtimeVoice:
         self._current_response: str | None = None
         self._playback_end = 0.0
         self._last_activity = -1e9
+        self.on_guest_speech: Callable[[], None] | None = None
         self._in_rate = mini.media.get_input_audio_samplerate()
         self._out_rate = mini.media.get_output_audio_samplerate()
 
@@ -199,6 +200,8 @@ class RealtimeVoice:
             t = event.type
             if t == "input_audio_buffer.speech_started":
                 log.info("voice: guest started speaking")
+                if self.on_guest_speech and not self._forced_active:
+                    self.on_guest_speech()
             elif t == "conversation.item.input_audio_transcription.completed":
                 log.info("voice: heard %r", getattr(event, "transcript", ""))
             if t == "input_audio_buffer.speech_started" and not self._forced_active:

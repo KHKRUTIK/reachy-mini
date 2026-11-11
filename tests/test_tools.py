@@ -22,8 +22,8 @@ async def _rate_ok(jpeg):
     return "9/10, that print is doing a lot of work"
 
 
-def test_tools_are_rate_outfit_and_act_sad():
-    assert [t["name"] for t in TOOLS] == ["rate_outfit", "act_sad"]
+def test_tools_are_rate_look_and_sad():
+    assert [t["name"] for t in TOOLS] == ["rate_outfit", "look_at_me", "act_sad"]
     assert all(t["type"] == "function" for t in TOOLS)
 
 

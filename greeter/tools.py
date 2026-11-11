@@ -23,6 +23,15 @@ TOOLS: list[dict[str, Any]] = [
     },
     {
         "type": "function",
+        "name": "look_at_me",
+        "description": (
+            "Turn around to find the person talking to you and face them. Call this when someone asks "
+            "you to look at them, turn to them, or find them, or asks if you can see them."
+        ),
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "type": "function",
         "name": "act_sad",
         "description": (
             "Physically act sad: droop your head and antennas. Call this when someone is mean or rude "
@@ -65,6 +74,7 @@ async def rate_fit(
 def make_tool_handler(
     rate_outfit: Callable[[], Awaitable[dict]],
     act_sad: Callable[[], Awaitable[None]],
+    look_at_me: Callable[[], Awaitable[bool]] | None = None,
 ) -> Callable[[str, dict], Awaitable[dict]]:
     async def handle(name: str, args: dict) -> dict:
         if name == "rate_outfit":
@@ -77,6 +87,13 @@ def make_tool_handler(
             return {
                 "ok": True,
                 "say": "You're drooping sadly. Say one short, gentle, slightly sad line, then bounce back kindly.",
+            }
+        if name == "look_at_me" and look_at_me:
+            found = await look_at_me()
+            return {
+                "found": found,
+                "say": "You found them and are now facing them; say so playfully." if found
+                else "You looked around but couldn't spot them. Ask them to step in front of your camera.",
             }
         return {"error": f"unknown tool {name}"}
 

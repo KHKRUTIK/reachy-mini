@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 
 NAMED_LINE_MAX_AGE_S = 10.0   # never greet someone by name after they've likely walked off
 GENERIC_LINE_MAX_AGE_S = 15.0
+AUTO_SEARCH_COOLDOWN_S = 20.0  # heard someone but can't see them: look around at most this often
 
 
 class Greeter:
@@ -40,6 +41,7 @@ class Greeter:
         self._welcome_seq = 0
         self.conversation_active: Callable[[], bool] = lambda: False
         self._express_warned_at = -math.inf
+        self._last_auto_search = -math.inf
         self.on_qr_prompt: Callable[[float], None] | None = None
 
     async def handle_scan(self, r: ScanResult) -> None:
@@ -75,6 +77,21 @@ class Greeter:
             self._spawn(self._move(self._moves.perk_up))
             if self.on_qr_prompt:
                 self.on_qr_prompt(now)
+
+    async def find_person(self, found: Callable[[], bool], now: float, auto: bool = False) -> bool:
+        """Look around for a face. ``auto`` searches (heard a voice, saw nobody) are rate-limited."""
+        if auto and now - self._last_auto_search < AUTO_SEARCH_COOLDOWN_S:
+            return False
+        if auto:
+            self._last_auto_search = now
+        result = False
+
+        async def run() -> None:
+            nonlocal result
+            result = await self._moves.search(found)
+
+        await self._move(run)
+        return result
 
     async def act_sad(self) -> None:
         """Droop sadly (someone was mean). Runs in the background so Reachy can answer straight away."""
