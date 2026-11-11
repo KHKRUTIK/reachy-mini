@@ -5,6 +5,13 @@ Event: Codex Community Meetup | Melbourne (Reachy says "OpenAI Dev Day"), Sat 21
 
 Everything runs on the host MacBook with Reachy plugged in by USB **and** its own power adapter.
 
+## Quick start (does steps 2, 3 and 5 below, and checks each one)
+
+```
+cd ~/Projects/reachy-mini && ./scripts/start.sh
+```
+It checks the USB, mic, motors and camera, sets the volume (`REACHY_VOLUME` in `.env`, default 60), and starts Reachy's app. It stops with a clear message if anything's wrong. Leave the window open. **Ctrl+C** in it stops everything. From any other terminal, `./scripts/stop.sh` does the same. Run one of them before you power Reachy off or unplug him. Then do step 4 (scanner tab) and step 6 (test scan).
+
 ## Setup (allow 15 minutes, finish by 9:30)
 
 1. **Power on Reachy.** Plug in the power adapter, switch it on, and connect the USB cable to the Mac. Bring a **phone hotspot** in case the venue Wi-Fi fails.
