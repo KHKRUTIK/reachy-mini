@@ -172,13 +172,24 @@ class RealtimeVoice:
     async def _mic_loop(self) -> None:
         media = self._mini.media
         media.start_recording()
+        stats = {"got": 0, "empty": 0, "sent": 0, "peak": 0.0}
+        last_report = time.monotonic()
         while True:
+            if time.monotonic() - last_report >= 15.0:
+                log.info("mic: %d chunks, %d empty, %d sent, peak %.3f, listening=%s",
+                         stats["got"], stats["empty"], stats["sent"], stats["peak"], self._listening)
+                stats = {"got": 0, "empty": 0, "sent": 0, "peak": 0.0}
+                last_report = time.monotonic()
             sample = await asyncio.to_thread(media.get_audio_sample)
             if sample is None or len(sample) == 0:
+                stats["empty"] += 1
                 await asyncio.sleep(0.01)
                 continue
+            stats["got"] += 1
+            stats["peak"] = max(stats["peak"], float(np.max(np.abs(sample))))
             if not self._listening or self._forced_active:
                 continue
+            stats["sent"] += 1
             pcm = float_to_pcm16(resample(to_mono(sample), self._in_rate, MODEL_RATE))
             await self._conn.input_audio_buffer.append(audio=base64.b64encode(pcm).decode("ascii"))
 
@@ -186,6 +197,10 @@ class RealtimeVoice:
         self._mini.media.start_playing()
         async for event in self._conn:
             t = event.type
+            if t == "input_audio_buffer.speech_started":
+                log.info("voice: guest started speaking")
+            elif t == "conversation.item.input_audio_transcription.completed":
+                log.info("voice: heard %r", getattr(event, "transcript", ""))
             if t == "input_audio_buffer.speech_started" and not self._forced_active:
                 self.note_activity()
                 self._flush_playback()

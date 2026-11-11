@@ -50,5 +50,5 @@ async def test_fetch_without_cache_raises(tmp_path, monkeypatch):
 
 def test_instructions_include_robot_self_knowledge():
     text = build_instructions("event", "")
-    for fact in ("Reachy Mini Lite", "Pollen Robotics", "Hugging Face", "antennas", "rate", "can't walk"):
+    for fact in ("Reachy Mini Lite", "Pollen Robotics", "Hugging Face", "antennas", "rate", "can't walk", "English"):
         assert fact in text
