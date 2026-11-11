@@ -64,7 +64,7 @@ async def amain() -> None:
     settings = load_settings(load_dotenv(ROOT / ".env"))
     event_text = await fetch_event_text(settings.event_url, ROOT / "data" / "event_info.md")
     extra = (ROOT / "data" / "event_extra.md")
-    instructions = build_instructions(event_text, extra.read_text() if extra.exists() else "")
+    instructions = build_instructions(event_text, extra.read_text() if extra.exists() else "", settings.event_name)
 
     with ReachyMini() as mini:
         async with httpx.AsyncClient(timeout=3.0) as client:
@@ -101,7 +101,8 @@ async def amain() -> None:
 
         voice = RealtimeVoice(settings, mini, instructions, TOOLS, make_tool_handler(rate_current_fit, act_sad))
         speech = SpeechQueue(voice.say_exact)
-        greeter = Greeter(speech, Moves(mini, settings.daemon_url), CheckinGate(), ArrivalPrompter(), get_compliment)
+        greeter = Greeter(speech, Moves(mini, settings.daemon_url), CheckinGate(), ArrivalPrompter(), get_compliment,
+                          event_name=settings.event_name)
         greeter_ref.append(greeter)
         greeter.conversation_active = lambda: voice.active_within(10.0)
 

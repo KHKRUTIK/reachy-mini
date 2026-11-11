@@ -38,7 +38,7 @@ def welcome_back_line(full_name: str | None) -> str:
     return f"{greeting} You've already checked in, so take a seat whenever you're ready."
 
 
-def welcome_line(full_name: str | None) -> str:
+def welcome_line(full_name: str | None, event_name: str = "OpenAI Dev Day") -> str:
     name = first_name(full_name)
     greeting = f"Welcome, {name}!" if name else "Welcome!"
-    return f"{greeting} MLAI welcomes you to the OpenAI Dev Day!"
+    return f"{greeting} MLAI welcomes you to the {event_name}!"

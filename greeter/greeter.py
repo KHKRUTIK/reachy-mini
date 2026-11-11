@@ -25,6 +25,7 @@ class Greeter:
         arrival: ArrivalPrompter,
         get_compliment: Callable[[], Awaitable[str | None]],
         compliment_window_s: float = 6.0,
+        event_name: str = "OpenAI Dev Day",
     ) -> None:
         self._speech = speech
         self._moves = moves
@@ -32,6 +33,7 @@ class Greeter:
         self._arrival = arrival
         self._get_compliment = get_compliment
         self._compliment_window_s = compliment_window_s
+        self._event_name = event_name
         self._tasks: set[asyncio.Task] = set()
         self.moving = False
         self._move_lock = asyncio.Lock()
@@ -51,7 +53,7 @@ class Greeter:
         log.info("scan %s %r -> %s", r.kind, r.name, decision)
         if decision == "welcome":
             self._welcome_seq += 1
-            await self._speech.put(welcome_line(r.name), max_age_s=NAMED_LINE_MAX_AGE_S)  # queued before its compliment
+            await self._speech.put(welcome_line(r.name, self._event_name), max_age_s=NAMED_LINE_MAX_AGE_S)  # queued before its compliment
             self._spawn(self._compliment_after_welcome(self._welcome_seq))
             self._spawn(self._move(self._moves.welcome))
         elif decision == "welcome_back":

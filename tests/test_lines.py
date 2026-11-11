@@ -41,3 +41,7 @@ def test_all_set_line():
     from greeter.lines import all_set_line
     assert all_set_line("Luis Saso") == "You're all checked in, Luis! Take a seat whenever you're ready."
     assert all_set_line(None) == "You're all checked in! Take a seat whenever you're ready."
+
+
+def test_welcome_line_uses_event_name():
+    assert welcome_line("Sarah Chen", "Victor AI Showcase") == "Welcome, Sarah! MLAI welcomes you to the Victor AI Showcase!"

@@ -52,3 +52,8 @@ def test_instructions_include_robot_self_knowledge():
     text = build_instructions("event", "")
     for fact in ("Reachy Mini Lite", "Pollen Robotics", "Hugging Face", "antennas", "rate", "can't walk", "English"):
         assert fact in text
+
+
+def test_instructions_use_event_name():
+    text = build_instructions("event", "", "Victor AI Showcase")
+    assert "Victor AI Showcase" in text and "Dev Day" not in text

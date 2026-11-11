@@ -51,7 +51,7 @@ async def fetch_event_text(url: str, cache_path: Path) -> str:
     return text
 
 
-_RULES = """You are Reachy, MLAI's friendly little robot greeter at the front desk of the OpenAI Dev Day.
+_RULES = """You are Reachy, MLAI's friendly little robot greeter at the front desk of the {event_name}.
 You speak out loud to guests in a bright, warm, playful tone.
 
 About you (share this when guests ask what you are or what you can do):
@@ -75,8 +75,8 @@ Rules:
 """
 
 
-def build_instructions(event_text: str, extra_text: str) -> str:
-    sections = [_RULES, "## Event page (from Luma)", event_text.strip() or "(not available)"]
+def build_instructions(event_text: str, extra_text: str, event_name: str = "OpenAI Dev Day") -> str:
+    sections = [_RULES.replace("{event_name}", event_name), "## Event page (from Luma)", event_text.strip() or "(not available)"]
     if extra_text.strip():
         sections += ["## Extra details from the hosts", extra_text.strip()]
     return "\n\n".join(sections)

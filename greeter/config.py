@@ -14,6 +14,7 @@ class Settings:
     server_port: int = 8765
     daemon_url: str = "http://127.0.0.1:8000"
     event_url: str = "https://luma.com/event/evt-ZLcgMdLTqHF8bK3"
+    event_name: str = "OpenAI Dev Day"  # spoken: "MLAI welcomes you to the {event_name}!"
 
 
 _OPTIONAL = {
@@ -23,6 +24,7 @@ _OPTIONAL = {
     "GREETER_PORT": ("server_port", int),
     "DAEMON_URL": ("daemon_url", str),
     "EVENT_URL": ("event_url", str),
+    "EVENT_NAME": ("event_name", str),
 }
 
 

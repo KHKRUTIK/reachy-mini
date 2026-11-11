@@ -1,6 +1,8 @@
 # Reachy greeter — event-day runbook
 
 Event: Codex Community Meetup | Melbourne (Reachy says "OpenAI Dev Day"), Sat 21 Nov 2026, doors 10:00.
+**Switching events:** set `EVENT_URL` (the public Luma event link) and `EVENT_NAME` (spoken as "MLAI welcomes you to the {EVENT_NAME}!") in `~/Projects/reachy-mini/.env`, open that event's scanner (`https://luma.com/check-in/<evt-id>/scan`), and restart the app. With neither set, Reachy uses the Dev Day event.
+
 Everything runs on the host MacBook with Reachy plugged in by USB **and** its own power adapter.
 
 ## Setup (allow 15 minutes, finish by 9:30)

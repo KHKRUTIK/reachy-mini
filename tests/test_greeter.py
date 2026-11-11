@@ -186,3 +186,12 @@ async def test_welcome_lines_carry_a_max_age():
     await g.handle_scan(R("success", "Sam", 0))
     await g.drain()
     assert g._speech.lines[0][1] == 10.0
+
+
+async def test_greeter_welcomes_to_configured_event():
+    speech, moves = FakeSpeech(), FakeMoves()
+    async def none(): return None
+    g = Greeter(speech, moves, CheckinGate(), ArrivalPrompter(), none, compliment_window_s=0.2, event_name="Victor AI Showcase")
+    await g.handle_scan(R("success", "Sam", 0))
+    await g.drain()
+    assert speech.lines[0] == "Welcome, Sam! MLAI welcomes you to the Victor AI Showcase!"
