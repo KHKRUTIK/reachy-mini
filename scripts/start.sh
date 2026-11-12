@@ -38,11 +38,17 @@ fi
 # 4. Daemon (motors + camera). First start after a reboot can take 2–4 minutes.
 .venv/bin/reachy-mini-daemon -p "$PORT" --headless > daemon.log 2>&1 &
 DAEMON=$!
+# Stop process $1 politely; force it after 5 s if it hangs (the app sometimes does).
+stop_pid() {
+  kill "$1" 2>/dev/null || return 0
+  for i in $(seq 10); do kill -0 "$1" 2>/dev/null || return 0; sleep 0.5; done
+  kill -9 "$1" 2>/dev/null
+}
 cleanup() {
   echo; echo "Stopping Reachy…"
-  [ -n "${APP:-}" ] && kill "$APP" 2>/dev/null && wait "$APP" 2>/dev/null
-  curl -s -X POST localhost:8000/api/media/tracking/disable >/dev/null 2>&1
-  kill "$DAEMON" 2>/dev/null; wait "$DAEMON" 2>/dev/null
+  [ -n "${APP:-}" ] && stop_pid "$APP"
+  curl -s -m 3 -X POST localhost:8000/api/media/tracking/disable >/dev/null 2>&1
+  stop_pid "$DAEMON"
   echo "Stopped. Safe to power off and unplug."
 }
 trap cleanup EXIT
