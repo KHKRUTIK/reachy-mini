@@ -35,7 +35,7 @@
   const LUMA_CODE = /^https:\/\/(www\.)?(luma\.com|lu\.ma)\/check-in\//;
   const SHOW_MS = 1500;      // how long the clean copy is shown
   const REPEAT_MS = 20000;   // don't re-show the same code within this window (limits automatic re-reads)
-  const DETECT_EVERY_MS = 150;
+  const DETECT_EVERY_MS = 50;   // check for a code ~20x a second
 
   function drawCleanCode(ctx, text, w, h) {
     const qr = qrcode(0, "M");

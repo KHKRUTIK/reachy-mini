@@ -15,6 +15,8 @@ log = logging.getLogger(__name__)
 NAMED_LINE_MAX_AGE_S = 10.0   # never greet someone by name after they've likely walked off
 GENERIC_LINE_MAX_AGE_S = 15.0
 AUTO_SEARCH_COOLDOWN_S = 20.0  # heard someone but can't see them: look around at most this often
+AUTO_SEARCH_AFTER_FACE_S = 8.0  # a face just vanished (phone held up over it?): stay put, don't turn from the QR
+AUTO_SEARCH_AFTER_SCAN_S = 15.0  # someone is at the scanner: stay put
 
 
 class Greeter:
@@ -42,6 +44,8 @@ class Greeter:
         self.conversation_active: Callable[[], bool] = lambda: False
         self._express_warned_at = -math.inf
         self._last_auto_search = -math.inf
+        self._last_face_at = -math.inf
+        self._last_scan_at = -math.inf
         self.on_qr_prompt: Callable[[float], None] | None = None
 
     async def handle_scan(self, r: ScanResult) -> None:
@@ -51,6 +55,7 @@ class Greeter:
                 await self._speech.put(EXPRESS_OFF_LINE)
             return
         self._arrival.note_scan(r.at)
+        self._last_scan_at = r.at
         decision = self._gate.decide(r)
         log.info("scan %s %r -> %s", r.kind, r.name, decision)
         if decision == "welcome":
@@ -70,6 +75,8 @@ class Greeter:
             await self._speech.put(WRONG_CODE_LINE, max_age_s=GENERIC_LINE_MAX_AGE_S)
 
     async def handle_face(self, present: bool, now: float) -> None:
+        if present:
+            self._last_face_at = now
         if self.moving:
             return
         if self._arrival.update(present, now, can_prompt=not self.conversation_active()):
@@ -80,7 +87,11 @@ class Greeter:
 
     async def find_person(self, found: Callable[[], bool], now: float, auto: bool = False) -> bool:
         """Look around for a face. ``auto`` searches (heard a voice, saw nobody) are rate-limited."""
-        if auto and now - self._last_auto_search < AUTO_SEARCH_COOLDOWN_S:
+        if auto and (
+            now - self._last_auto_search < AUTO_SEARCH_COOLDOWN_S
+            or now - self._last_face_at < AUTO_SEARCH_AFTER_FACE_S
+            or now - self._last_scan_at < AUTO_SEARCH_AFTER_SCAN_S
+        ):
             return False
         if auto:
             self._last_auto_search = now

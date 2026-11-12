@@ -37,6 +37,7 @@ async def test_search_gives_up_and_faces_forward():
 class SearchMoves:
     def __init__(self, result=True): self.searches, self.result = 0, result
     async def search(self, found): self.searches += 1; return self.result
+    async def welcome(self): pass
 
 
 class NullSpeech:
@@ -98,3 +99,34 @@ async def test_voice_reports_guest_speech():
     voice._conn = FakeConn([SimpleNamespace(type="input_audio_buffer.speech_started")])
     await voice._event_loop()
     assert heard == [1]
+
+
+async def test_auto_search_waits_while_a_face_was_just_seen():
+    # A guest holding their phone up hides their face; don't spin away from the QR code.
+    moves = SearchMoves(result=False)
+    g = make(moves)
+    await g.handle_face(True, now=100.0)
+    await g.find_person(lambda: False, now=104.0, auto=True)
+    assert moves.searches == 0
+    await g.find_person(lambda: False, now=100.0 + 8.1, auto=True)
+    assert moves.searches == 1
+
+
+async def test_auto_search_waits_after_a_scan():
+    from greeter.checkin import ScanResult
+    moves = SearchMoves(result=False)
+    g = make(moves)
+    await g.handle_scan(ScanResult("success", "Ada Lovelace", 200.0))
+    await g.drain()
+    await g.find_person(lambda: False, now=210.0, auto=True)
+    assert moves.searches == 0
+    await g.find_person(lambda: False, now=215.1, auto=True)
+    assert moves.searches == 1
+
+
+async def test_asked_search_ignores_recent_face_and_scan():
+    moves = SearchMoves(result=False)
+    g = make(moves)
+    await g.handle_face(True, now=100.0)
+    await g.find_person(lambda: False, now=101.0)
+    assert moves.searches == 1
