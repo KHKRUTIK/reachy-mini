@@ -27,6 +27,7 @@ It checks the USB, mic, motors and camera, sets the volume (`REACHY_VOLUME` in `
 4. **Open the scanner in Chrome:** `https://luma.com/check-in/evt-ZLcgMdLTqHF8bK3/scan`
    - Camera: **Reachy Mini Camera**.
    - Check that **Reachy Greeter Bridge** is enabled in `chrome://extensions`.
+   - If the code changed since the last event, click the reload arrow on Reachy Greeter Bridge in `chrome://extensions` first, so the scanner uses the latest version.
    - The extension picks **Express** in the Scan Options popup by itself. The header must say **"Express Mode On"**. If it doesn't, choose Express yourself.
 5. **Start Reachy's app** in a second terminal:
    ```
@@ -52,6 +53,7 @@ It checks the USB, mic, motors and camera, sets the volume (`REACHY_VOLUME` in `
 | Head stuck or not moving, "Motor communication error" | Check the power. Then restart the daemon (step 2) and the app (step 5). |
 | Reachy only talks when someone scans: he ignores people walking up, won't chat, and gives no compliments | The daemon didn't connect to the camera when it started. Check with `grep -c "cannot reach the camera" ~/Projects/reachy-mini/daemon.log`: any number above 0 means the camera feed is missing. Also, at startup the app log shows `Using WebRTC backend` instead of `Using LOCAL backend`. Fix: stop the app, restart the daemon (step 2), start the app (step 5), then reload the scanner tab and check Express Mode is on. |
 | Reachy checks people in but ignores chat and "rate my fit", even while he's looking at you | His mic may have gone silent. In `logs/greeter.log`, every 15 s there's a line like `mic: ... peak 0.000`: a peak of 0.000 means the mic is sending pure silence (normal speech gives about 0.1 or more). Fix: stop the app, **unplug Reachy's USB cable for 5 seconds and plug it back in**, then restart the daemon (step 2), set the volume (step 3), start the app (step 5), and reload the scanner tab. |
+| Scanning feels slow, or Reachy turns away while a guest holds up their QR | The extension may be running old code. Open `chrome://extensions`, click the reload arrow on **Reachy Greeter Bridge**, then reload the scanner tab (do this after every update). It checks the camera for a code about 20 times a second. Reachy also won't turn to look for a voice within 8 s of seeing a face (a raised phone often hides it) or 15 s of a scan. If he still turns away, ask the guest to stay quiet for a second while scanning, or use "look at me" only after the scan. Also check the usual: phone brightness up, ticket open, held still at arm's length. |
 | Head keeps following faces after stopping | `curl -X POST localhost:8000/api/media/tracking/disable` |
 | Camera busy or black in Chrome | Close other apps using the camera and reload the scanner tab. Chrome and the daemon can share the camera. |
 
