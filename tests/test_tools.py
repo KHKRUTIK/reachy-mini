@@ -1,5 +1,6 @@
 import asyncio
 
+import cv2
 import numpy as np
 from reachy_mini.vision.face_detector import Face
 
@@ -42,9 +43,22 @@ async def test_rate_fit_with_no_face_asks_to_step_in_front():
     assert "rating" not in out and "in front" in out["say"]
 
 
-async def test_rate_fit_with_two_people_asks_one_at_a_time():
+async def test_rate_fit_with_two_people_rates_the_main_one():
     out = await rate_fit(lambda: FRAME, lambda f: [GUEST, face(100, 100, 90, 110)], _rate_ok)
-    assert "rating" not in out and "one at a time" in out["say"]
+    assert out["rating"].startswith("9/10")
+
+
+async def test_rate_fit_blacks_out_a_face_behind_the_guest():
+    frame = np.full((720, 1280, 3), 255, np.uint8)
+    behind = face(620, 300, 60, 70)  # smaller face inside the guest's outfit area
+    sent = []
+    async def rate(jpeg):
+        sent.append(cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)); return "8/10"
+    out = await rate_fit(lambda: frame, lambda f: [GUEST, behind], rate)
+    assert out == {"rating": "8/10"}
+    # crop starts at y=238 and x=500; the masked face sits at rows 300-370, cols 620-680
+    assert sent[0][300 - 238 + 10, 620 - 500 + 10].max() < 40
+    assert frame.min() == 255  # original frame untouched
 
 
 async def test_rate_fit_when_outfit_out_of_view_asks_to_step_back():

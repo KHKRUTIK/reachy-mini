@@ -43,7 +43,6 @@ TOOLS: list[dict[str, Any]] = [
 
 STEP_BACK = "Ask them, playfully, to take a step back so you can see their whole outfit, then ask again."
 STEP_IN_FRONT = "You can't see anyone. Ask them to stand right in front of you, then ask again."
-ONE_AT_A_TIME = "You can see more than one person. Ask them to come up one at a time for a rating."
 CANT_TELL = "You couldn't get a good look. Say so cheerfully and suggest trying again in a moment."
 
 
@@ -59,9 +58,12 @@ async def rate_fit(
     faces = detect(frame)
     if not faces:
         return {"say": STEP_IN_FRONT}
+    # Rate the main (largest, i.e. closest) person. Anyone else in view gets blacked out first,
+    # so their face can't end up in the crop that goes to the vision model.
+    main = max(faces, key=lambda f: f.bbox[2] * f.bbox[3])
     if len(faces) > 1:
-        return {"say": ONE_AT_A_TIME}
-    crop = crop_below_face(frame, faces)
+        frame = _mask_faces(frame, [f for f in faces if f is not main])
+    crop = crop_below_face(frame, [main])
     if crop is None:
         return {"say": STEP_BACK}
     ok, jpeg = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 80])
@@ -69,6 +71,17 @@ async def rate_fit(
     if not text:
         return {"say": CANT_TELL}
     return {"rating": text}
+
+
+def _mask_faces(frame: np.ndarray, faces: list) -> np.ndarray:
+    """Copy of the frame with each face (plus a generous margin) painted black."""
+    out = frame.copy()
+    height, width = out.shape[:2]
+    for f in faces:
+        x, y, w, h = f.bbox
+        mx, my = int(0.3 * w), int(0.3 * h)
+        out[max(0, y - my):min(height, y + h + my), max(0, x - mx):min(width, x + w + mx)] = 0
+    return out
 
 
 def make_tool_handler(
