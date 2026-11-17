@@ -77,3 +77,8 @@ def test_same_language_both_sides_means_no_translating():
     assert state.same_language
     text = build_translator_instructions(state)
     assert "both speak English" in text and "Don't translate" in text
+
+
+def test_people_can_switch_language_mid_conversation():
+    text = build_translator_instructions(TranslatorState(left="Chinese", right="French"))
+    assert "switch to English" in text and "Their request always wins" in text
