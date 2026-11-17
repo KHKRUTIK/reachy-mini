@@ -15,8 +15,9 @@ log = logging.getLogger(__name__)
 SEARCH_YAWS_DEG = [-40, -80, -40, 0, 40, 80, 40]
 # Translator mode (positive yaw = Reachy's left): sweep outward until he sees a face, remember that spot.
 SIDE_SIGN = {"left": 1.0, "right": -1.0}
-SIDE_SWEEP_DEG = [30, 50, 70, 85]
-SIDE_DEFAULT_DEG = 60  # where he settles if he finds nobody
+SIDE_SWEEP_DEG = [30, 45, 60, 75, 90, 105, 120]  # body can go to 160
+SIDE_DEFAULT_DEG = 90  # where he settles if he finds nobody
+LOOKS_PER_STOP = 3     # camera checks at each stop (one frame can miss a face)
 
 
 def _pose(pitch=0.0, roll=0.0, yaw=0.0):
@@ -96,7 +97,7 @@ class Moves:
             spot = self._spots.get(side)
             if spot is not None:
                 await self._turn_body(spot)
-                if self.sees_face is None or await asyncio.to_thread(self.sees_face):
+                if self.sees_face is None or await self._look():
                     log.info("turned to %s (%.0f deg)", side, spot)
                     return
                 log.info("%s person moved from %.0f deg; looking again", side, spot)
@@ -105,8 +106,8 @@ class Moves:
                 return
             for deg in SIDE_SWEEP_DEG:
                 yaw = sign * deg
-                await self._turn_body(yaw, duration=0.5)
-                if await asyncio.to_thread(self.sees_face):
+                await self._turn_body(yaw, duration=0.4)
+                if await self._look():
                     self._spots[side] = yaw
                     log.info("turned to %s: found someone at %.0f deg", side, yaw)
                     return
@@ -127,7 +128,14 @@ class Moves:
             self._mini.goto_target, head=_pose(), antennas=[0.0, 0.0],
             body_yaw=float(np.deg2rad(yaw_deg)), duration=duration,
         )
-        await asyncio.sleep(0.15)  # let the camera catch up before looking
+        await asyncio.sleep(0.4)  # let him settle and the camera catch up before looking
+
+    async def _look(self) -> bool:
+        for _ in range(LOOKS_PER_STOP):
+            if await asyncio.to_thread(self.sees_face):
+                return True
+            await asyncio.sleep(0.1)
+        return False
 
     async def _sequence(self, steps: list[tuple[dict, float]]) -> None:
         await self._tracking(False)

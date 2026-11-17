@@ -139,33 +139,33 @@ def _yaws(mini):
 
 async def test_turn_to_sweeps_until_it_finds_a_face_and_remembers_the_spot():
     mini = FakeMini()
-    looks = iter([False, False, True])
+    looks = iter([False] * 3 + [False] * 3 + [True])   # 3 looks per stop
     moves = Moves(mini, "http://127.0.0.1:9", sees_face=lambda: next(looks))
     await moves.turn_to("left")
-    assert _yaws(mini) == [30, 50, 70]          # stopped where it found someone
+    assert _yaws(mini) == [30, 45, 60]          # stopped where it found someone
     mini.gotos.clear()
     moves._side = "right"                        # pretend he's facing the other person
     moves.sees_face = lambda: True
     await moves.turn_to("left")
-    assert _yaws(mini) == [70]                   # straight back to where they were
+    assert _yaws(mini) == [60]                   # straight back to where they were
 
 
 async def test_turn_to_resweeps_if_the_person_moved():
     mini = FakeMini()
     moves = Moves(mini, "http://127.0.0.1:9", sees_face=lambda: True)
-    moves._spots["right"] = -70.0
-    looks = iter([False, False, True])           # not at the old spot; found again at -50
+    moves._spots["right"] = -75.0
+    looks = iter([False] * 3 + [False] * 3 + [True])   # not at the old spot; found again at -45
     moves.sees_face = lambda: next(looks)
     await moves.turn_to("right")
-    assert _yaws(mini) == [-70, -30, -50]
-    assert moves._spots["right"] == -50.0
+    assert _yaws(mini) == [-75, -30, -45]
+    assert moves._spots["right"] == -45.0
 
 
 async def test_turn_to_gives_up_at_a_default_angle_and_keeps_looking_next_time():
     mini = FakeMini()
     moves = Moves(mini, "http://127.0.0.1:9", sees_face=lambda: False)
     await moves.turn_to("right")
-    assert _yaws(mini) == [-30, -50, -70, -85, -60]
+    assert _yaws(mini) == [-30, -45, -60, -75, -90, -105, -120, -90]
     assert "right" not in moves._spots
     moves.forget_sides()
     assert moves._side is None

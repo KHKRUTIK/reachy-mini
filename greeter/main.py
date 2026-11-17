@@ -69,12 +69,15 @@ async def run_translator(settings: Settings) -> None:
         detector = FaceDetector()
 
         def sees_face_ahead() -> bool:
-            """A face near the middle of the frame, so the other person at the edge doesn't count."""
+            """A face in the middle 80% of the frame, so the other person at the very edge doesn't count."""
             frame = mini.media.get_frame()  # in memory only, never saved
             if frame is None:
                 return False
             width = frame.shape[1]
-            return any(0.2 * width < f.bbox[0] + f.bbox[2] / 2 < 0.8 * width for f in detector.detect(frame))
+            faces = detector.detect(frame)
+            if faces:
+                log.info("look: %d face(s) at x=%s of %d", len(faces), [int(f.bbox[0] + f.bbox[2] / 2) for f in faces], width)
+            return any(0.1 * width < f.bbox[0] + f.bbox[2] / 2 < 0.9 * width for f in faces)
 
         moves = Moves(mini, settings.daemon_url, sees_face=sees_face_ahead)
         state = TranslatorState()

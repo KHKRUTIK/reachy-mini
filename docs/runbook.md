@@ -57,7 +57,7 @@ Reachy can also work as a polite interpreter between two people who don't share 
 Notes:
 - He can't be interrupted mid-sentence in this mode. His mic is off while he's talking, so he doesn't translate himself. Wait for him to finish.
 - He decides "gentleman" or "lady" from the voice, and says "your guest" when unsure.
-- The first time he turns to each side, he sweeps outward until he sees a face and remembers that spot. After that he goes straight back to it, and looks again if the person has moved. If he finds nobody he waits at 60°, so stand a little closer or more in front of him.
+- The first time he turns to each side, he sweeps outward (30° up to 120°) until he sees a face and remembers that spot. After that he goes straight back to it, and looks again if the person has moved. If he finds nobody he waits at 90°, so stand a little closer or more in front of him.
 - `logs/greeter.log` shows `translator: left speaks …` lines once setup has worked.
 
 ## Troubleshooting
