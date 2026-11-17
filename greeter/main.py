@@ -85,7 +85,7 @@ async def run_translator(settings: Settings) -> None:
 
         handler = make_translator_handler(state, moves, act_sad, lambda text: voice_ref[0].update_instructions(text))
         voice = RealtimeVoice(settings, mini, build_translator_instructions(state), TRANSLATOR_TOOLS, handler,
-                              half_duplex=True, max_output_tokens=600)
+                              half_duplex=True, max_output_tokens=4096)  # audio counts too
         voice_ref.append(voice)
 
         async def start_setup() -> None:

@@ -265,7 +265,7 @@ class RealtimeVoice:
             args = json.loads(arguments or "{}")
             result = await self._tool_handler(name, args) if self._tool_handler else {"error": "no tools"}
         except Exception as e:
-            log.exception("tool %s failed", name)
+            log.exception("tool %s failed (arguments %r)", name, (arguments or "")[:200])
             result = {"error": str(e)}
         await self._conn.conversation.item.create(
             item={"type": "function_call_output", "call_id": call_id, "output": json.dumps(result)}
