@@ -19,3 +19,13 @@ def test_event_name_defaults_and_overrides():
     from greeter.config import load_settings
     assert load_settings({"OPENAI_API_KEY": "k"}).event_name == "OpenAI Dev Day"
     assert load_settings({"OPENAI_API_KEY": "k", "EVENT_NAME": "Victor AI Showcase"}).event_name == "Victor AI Showcase"
+
+
+def test_mode_defaults_to_greeter_and_accepts_translator():
+    assert load_settings({"OPENAI_API_KEY": "k"}).mode == "greeter"
+    assert load_settings({"OPENAI_API_KEY": "k", "REACHY_MODE": "Translator"}).mode == "translator"
+
+
+def test_unknown_mode_is_rejected():
+    with pytest.raises(ValueError, match="REACHY_MODE"):
+        load_settings({"OPENAI_API_KEY": "k", "REACHY_MODE": "dancer"})

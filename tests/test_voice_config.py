@@ -80,3 +80,23 @@ async def test_say_exact_gives_up_when_not_connected():
     from greeter.voice import RealtimeVoice
     v = RealtimeVoice(S, _Mini(), "x")
     await asyncio.wait_for(v.say_exact("hi", connect_timeout_s=0.05), 1.0)  # must not hang
+
+
+def test_max_output_tokens_override():
+    assert build_session_config(S, "x", [], max_output_tokens=600)["max_output_tokens"] == 600
+
+
+def test_half_duplex_blocks_mic_while_reachy_is_talking():
+    from greeter.voice import RealtimeVoice
+    v = RealtimeVoice(S, _Mini(), "x", half_duplex=True)
+    v._playback_end = 100.0
+    assert v.mic_blocked(now=99.0) is True
+    assert v.mic_blocked(now=100.2) is True    # small tail so the echo dies down
+    assert v.mic_blocked(now=100.4) is False
+
+
+def test_full_duplex_never_blocks_mic_for_playback():
+    from greeter.voice import RealtimeVoice
+    v = RealtimeVoice(S, _Mini(), "x")
+    v._playback_end = 100.0
+    assert v.mic_blocked(now=99.0) is False

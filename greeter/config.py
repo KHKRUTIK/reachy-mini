@@ -15,7 +15,10 @@ class Settings:
     daemon_url: str = "http://127.0.0.1:8000"
     event_url: str = "https://luma.com/event/evt-ZLcgMdLTqHF8bK3"
     event_name: str = "OpenAI Dev Day"  # spoken: "MLAI welcomes you to the {event_name}!"
+    mode: str = "greeter"  # or "translator"
 
+
+MODES = ("greeter", "translator")
 
 _OPTIONAL = {
     "REALTIME_MODEL": ("realtime_model", str),
@@ -25,6 +28,7 @@ _OPTIONAL = {
     "DAEMON_URL": ("daemon_url", str),
     "EVENT_URL": ("event_url", str),
     "EVENT_NAME": ("event_name", str),
+    "REACHY_MODE": ("mode", lambda v: v.lower()),
 }
 
 
@@ -37,4 +41,6 @@ def load_settings(env: Mapping[str, str]) -> Settings:
         for name, (field, cast) in _OPTIONAL.items()
         if (env.get(name) or "").strip()
     }
+    if overrides.get("mode", "greeter") not in MODES:
+        raise ValueError(f"REACHY_MODE must be one of {', '.join(MODES)}")
     return Settings(openai_api_key=key, **overrides)

@@ -13,6 +13,8 @@ log = logging.getLogger(__name__)
 
 # Where Reachy looks when hunting for someone: body turns, head level (degrees, 0 = straight ahead).
 SEARCH_YAWS_DEG = [-40, -80, -40, 0, 40, 80, 40]
+# Translator mode: body yaw to face the person on each side (positive yaw = Reachy's left).
+SIDE_YAWS_DEG = {"left": 35.0, "right": -35.0}
 
 
 def _pose(pitch=0.0, roll=0.0, yaw=0.0):
@@ -23,6 +25,7 @@ class Moves:
     def __init__(self, mini: Any, daemon_url: str) -> None:
         self._mini = mini
         self._daemon = daemon_url.rstrip("/")
+        self._side: str | None = None
 
     async def welcome(self) -> None:
         """Antennas up with a wiggle and a small happy nod (~1.4 s)."""
@@ -72,6 +75,21 @@ class Moves:
             await asyncio.to_thread(self._mini.goto_target, head=_pose(), antennas=[0.0, 0.0], body_yaw=0.0, duration=0.8)
             log.info("search: nobody found")
             return False
+        finally:
+            await self._tracking(True)
+
+    async def turn_to(self, side: str) -> None:
+        """Translator mode: rotate the body to face the person on his left or right; head tracking takes over."""
+        if side == self._side:
+            return
+        await self._tracking(False)
+        try:
+            await asyncio.to_thread(
+                self._mini.goto_target, head=_pose(), antennas=[0.0, 0.0],
+                body_yaw=float(np.deg2rad(SIDE_YAWS_DEG[side])), duration=0.6,
+            )
+            self._side = side
+            log.info("turned to %s", side)
         finally:
             await self._tracking(True)
 

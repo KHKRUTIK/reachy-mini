@@ -130,3 +130,13 @@ async def test_asked_search_ignores_recent_face_and_scan():
     await g.handle_face(True, now=100.0)
     await g.find_person(lambda: False, now=101.0)
     assert moves.searches == 1
+
+
+async def test_turn_to_rotates_body_once_per_side():
+    mini = FakeMini()
+    moves = Moves(mini, "http://127.0.0.1:9")
+    await moves.turn_to("left")
+    await moves.turn_to("left")   # already there: no move
+    assert len(mini.gotos) == 1 and mini.gotos[0]["body_yaw"] > 0  # positive yaw = his left
+    await moves.turn_to("right")
+    assert len(mini.gotos) == 2 and mini.gotos[1]["body_yaw"] < 0

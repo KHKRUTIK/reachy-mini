@@ -1,12 +1,16 @@
 #!/bin/bash
 # Start Reachy the greeter with the right settings, checking each part on the way.
-#   ./scripts/start.sh        (from ~/Projects/reachy-mini; Ctrl+C stops everything)
+#   ./scripts/start.sh             greeter (from ~/Projects/reachy-mini; Ctrl+C stops everything)
+#   ./scripts/start.sh translator  translator between two people on his left and right
 # Optional in .env: REACHY_VOLUME=60
 set -u
 cd "$(dirname "$0")/.."
 VOLUME=$(grep -E '^REACHY_VOLUME=' .env 2>/dev/null | cut -d= -f2)
 VOLUME=${VOLUME:-60}
 mkdir -p logs
+MODE=${1:-greeter}
+case "$MODE" in greeter|translator) export REACHY_MODE=$MODE ;;
+  *) echo "Unknown mode '$MODE'. Use: ./scripts/start.sh  or  ./scripts/start.sh translator"; exit 1 ;; esac
 ok()   { printf '  \033[32m✔\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1"; }
 fail() { printf '  \033[31m✘\033[0m %s\n' "$1"; exit 1; }
@@ -86,9 +90,14 @@ done
 grep -q "Using LOCAL backend" logs/greeter.log || warn "App isn't using the camera directly. If he ignores people, restart this script."
 grep -q "realtime connected" logs/greeter.log && ok "Voice connected" || warn "Voice not connected yet. Check OPENAI_API_KEY in .env"
 
-EVENT=$(grep -E '^EVENT_NAME=' .env 2>/dev/null | cut -d= -f2-)
 echo
-echo "Reachy is ready for: ${EVENT:-OpenAI Dev Day}"
-echo "Now reload the Luma scanner tab and check it says \"Express Mode On\"."
+if [ "$MODE" = translator ]; then
+  echo "Reachy is ready as a translator. Stand on his left and right; he'll ask each of you your language."
+  echo "Say \"Reachy, new conversation\" to start over with new people."
+else
+  EVENT=$(grep -E '^EVENT_NAME=' .env 2>/dev/null | cut -d= -f2-)
+  echo "Reachy is ready for: ${EVENT:-OpenAI Dev Day}"
+  echo "Now reload the Luma scanner tab and check it says \"Express Mode On\"."
+fi
 echo "Press Ctrl+C here to stop Reachy before powering him off."
 wait $APP

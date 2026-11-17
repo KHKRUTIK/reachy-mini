@@ -24,6 +24,7 @@ from greeter.robot import Moves
 from greeter.server import make_app, start_server
 from greeter.speech import SpeechQueue
 from greeter.tools import TOOLS, make_tool_handler, rate_fit
+from greeter.translator import SETUP_PROMPT, TRANSLATOR_TOOLS, TranslatorState, build_translator_instructions, make_translator_handler
 from greeter.voice import RealtimeVoice
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -60,8 +61,45 @@ async def scan_loop(queue: asyncio.Queue[ScanResult], greeter: Greeter) -> None:
         await greeter.handle_scan(await queue.get())
 
 
+async def run_translator(settings: Settings) -> None:
+    """Translator mode: no check-ins or compliments; relay between the people on Reachy's left and right."""
+    with ReachyMini() as mini:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            await client.post(f"{settings.daemon_url}/api/media/tracking/enable")
+        moves = Moves(mini, settings.daemon_url)
+        state = TranslatorState()
+        voice_ref: list[RealtimeVoice] = []
+
+        async def act_sad() -> None:
+            await moves.sad()
+
+        handler = make_translator_handler(state, moves, act_sad, lambda text: voice_ref[0].update_instructions(text))
+        voice = RealtimeVoice(settings, mini, build_translator_instructions(state), TRANSLATOR_TOOLS, handler,
+                              half_duplex=True, max_output_tokens=600)
+        voice_ref.append(voice)
+
+        async def start_setup() -> None:
+            if not state.ready:  # after a reconnect with languages known, just carry on translating
+                await voice.prompt(SETUP_PROMPT)
+
+        voice.on_connected = start_setup
+        voice.set_listening(True)
+        log.info("translator ready")
+        try:
+            await voice.run()
+        finally:
+            try:
+                async with httpx.AsyncClient(timeout=3.0) as client:
+                    await client.post(f"{settings.daemon_url}/api/media/tracking/disable")
+            except httpx.HTTPError:
+                log.warning("could not disable head tracking on exit")
+
+
 async def amain() -> None:
     settings = load_settings(load_dotenv(ROOT / ".env"))
+    if settings.mode == "translator":
+        await run_translator(settings)
+        return
     event_text = await fetch_event_text(settings.event_url, ROOT / "data" / "event_info.md")
     extra = (ROOT / "data" / "event_extra.md")
     instructions = build_instructions(event_text, extra.read_text() if extra.exists() else "", settings.event_name)

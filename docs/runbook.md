@@ -44,6 +44,22 @@ It checks the USB, mic, motors and camera, sets the volume (`REACHY_VOLUME` in `
 - **Stop Reachy:** press Ctrl+C in the app terminal, or run `pkill -f greeter.main`. This also stops the head following faces.
 - **Restart Reachy:** run the step 5 command again.
 
+## Translator mode
+
+Reachy can also work as a polite interpreter between two people who don't share a language. None of the greeter features run in this mode: no check-ins, compliments or fit ratings, and no scanner tab needed.
+
+1. **Start:** `./scripts/start.sh translator`. Stop with `./scripts/stop.sh` (or Ctrl+C) as usual. Plain `./scripts/start.sh` is the normal greeter again.
+2. **Stand** one person on Reachy's **left**, the other on his **right**, both about an arm's length away.
+3. **Setup:** he turns left and asks that person which language they want, then turns right and asks the other person.
+4. **Talk normally, one at a time.** After each person speaks, he turns to the other person and relays it in their language, for example "The gentleman is asking you…". Pause after each sentence or two so he can keep up.
+5. **New people:** say "Reachy, new conversation" and he runs setup again.
+
+Notes:
+- He can't be interrupted mid-sentence in this mode. His mic is off while he's talking, so he doesn't translate himself. Wait for him to finish.
+- He decides "gentleman" or "lady" from the voice, and says "your guest" when unsure.
+- If he turns the wrong way (to the right when he should face the left person), change `SIDE_YAWS_DEG` in `greeter/robot.py` by swapping the two signs.
+- `logs/greeter.log` shows `translator: left speaks …` lines once setup has worked.
+
 ## Troubleshooting
 
 | Symptom | Check |

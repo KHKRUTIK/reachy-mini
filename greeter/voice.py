@@ -23,12 +23,14 @@ FORCED_PREFIX = "Say exactly this, brightly and warmly, and nothing else: "
 ToolHandler = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
 
 
-def build_session_config(settings: Settings, instructions: str, tools: list[dict]) -> dict[str, Any]:
+def build_session_config(
+    settings: Settings, instructions: str, tools: list[dict], max_output_tokens: int = 200
+) -> dict[str, Any]:
     config: dict[str, Any] = {
         "type": "realtime",
         "instructions": instructions,
         "output_modalities": ["audio"],
-        "max_output_tokens": 200,
+        "max_output_tokens": max_output_tokens,
         "audio": {
             "input": {
                 "format": {"type": "audio/pcm", "rate": MODEL_RATE},
@@ -72,12 +74,17 @@ class RealtimeVoice:
         instructions: str,
         tools: list[dict] | None = None,
         tool_handler: ToolHandler | None = None,
+        half_duplex: bool = False,
+        max_output_tokens: int = 200,
     ) -> None:
         self._settings = settings
         self._mini = mini
         self._instructions = instructions
         self._tools = tools or []
         self._tool_handler = tool_handler
+        self._half_duplex = half_duplex  # don't send mic audio while Reachy is talking (no hearing himself)
+        self._max_output_tokens = max_output_tokens
+        self.on_connected: Callable[[], Awaitable[None]] | None = None
         self._conn: Any = None
         self._connected = asyncio.Event()
         self._listening = False
@@ -103,6 +110,27 @@ class RealtimeVoice:
         """True if a guest spoke or Reachy was answering within the last ``seconds``."""
         now = time.monotonic() if now is None else now
         return now - self._last_activity < seconds
+
+    def mic_blocked(self, now: float | None = None) -> bool:
+        """Half-duplex: True while Reachy's own audio is (or just was) playing."""
+        now = time.monotonic() if now is None else now
+        return self._half_duplex and now < self._playback_end + 0.3
+
+    def update_instructions(self, text: str) -> None:
+        """Replace the session instructions (now, and on every reconnect)."""
+        self._instructions = text
+        if self._conn is not None:
+            asyncio.get_running_loop().create_task(
+                self._conn.session.update(session={"type": "realtime", "instructions": text})
+            )
+
+    async def prompt(self, text: str) -> None:
+        """Nudge the model with a system note and ask it to respond (e.g. to start a setup flow)."""
+        await self._connected.wait()
+        await self._conn.conversation.item.create(
+            item={"type": "message", "role": "system", "content": [{"type": "input_text", "text": text}]}
+        )
+        await self._conn.response.create()
 
     async def say_exact(self, text: str, timeout_s: float = 20.0, connect_timeout_s: float = 5.0) -> None:
         """Speak ``text`` verbatim (out-of-band), interrupting any chat, and wait until it has played."""
@@ -135,11 +163,13 @@ class RealtimeVoice:
                 async with client.realtime.connect(model=self._settings.realtime_model) as conn:
                     self._conn = conn
                     await conn.session.update(
-                        session=build_session_config(self._settings, self._instructions, self._tools)
+                        session=build_session_config(self._settings, self._instructions, self._tools, self._max_output_tokens)
                     )
                     self._connected.set()
                     log.info("realtime connected (%s)", self._settings.realtime_model)
                     backoff = 1.0
+                    if self.on_connected:
+                        asyncio.create_task(self.on_connected())
                     await self._run_session()
                     log.warning("realtime session closed; reconnecting")
             except asyncio.CancelledError:
@@ -188,7 +218,7 @@ class RealtimeVoice:
                 continue
             stats["got"] += 1
             stats["peak"] = max(stats["peak"], float(np.max(np.abs(sample))))
-            if not self._listening or self._forced_active:
+            if not self._listening or self._forced_active or self.mic_blocked():
                 continue
             stats["sent"] += 1
             pcm = float_to_pcm16(resample(to_mono(sample), self._in_rate, MODEL_RATE))
