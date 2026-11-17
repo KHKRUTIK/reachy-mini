@@ -71,7 +71,7 @@ class Moves:
         try:
             for yaw in SEARCH_YAWS_DEG:
                 await asyncio.to_thread(
-                    self._mini.goto_target, head=_pose(), antennas=np.deg2rad([20, -20]),
+                    self._mini.goto_target, head=_pose(yaw=yaw), antennas=np.deg2rad([20, -20]),
                     body_yaw=float(np.deg2rad(yaw)), duration=0.7,
                 )
                 if await asyncio.to_thread(found):
@@ -124,8 +124,9 @@ class Moves:
         self._side = None
 
     async def _turn_body(self, yaw_deg: float, duration: float = 0.6) -> None:
+        # Head pose is in the room's frame, not the body's: turn it too, or the camera keeps facing forward.
         await asyncio.to_thread(
-            self._mini.goto_target, head=_pose(), antennas=[0.0, 0.0],
+            self._mini.goto_target, head=_pose(yaw=yaw_deg), antennas=[0.0, 0.0],
             body_yaw=float(np.deg2rad(yaw_deg)), duration=duration,
         )
         await asyncio.sleep(0.4)  # let him settle and the camera catch up before looking

@@ -179,3 +179,13 @@ async def test_turn_to_rotates_body_once_per_side():
     assert len(mini.gotos) == 1 and mini.gotos[0]["body_yaw"] > 0  # positive yaw = his left
     await moves.turn_to("right")
     assert len(mini.gotos) == 2 and mini.gotos[1]["body_yaw"] < 0
+
+
+async def test_turning_points_the_head_and_camera_the_same_way():
+    import numpy as np
+    from reachy_mini.utils import create_head_pose
+    mini = FakeMini()
+    moves = Moves(mini, "http://127.0.0.1:9", sees_face=lambda: True)
+    await moves.turn_to("left")
+    g = mini.gotos[0]
+    assert np.allclose(g["head"], create_head_pose(yaw=float(np.rad2deg(g["body_yaw"])), degrees=True))
