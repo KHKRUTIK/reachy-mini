@@ -72,11 +72,12 @@ async def run_translator(settings: Settings) -> None:
             """A face in the middle 80% of the frame, so the other person at the very edge doesn't count."""
             frame = mini.media.get_frame()  # in memory only, never saved
             if frame is None:
+                log.info("look: no camera frame")
                 return False
             width = frame.shape[1]
             faces = detector.detect(frame)
-            if faces:
-                log.info("look: %d face(s) at x=%s of %d", len(faces), [int(f.bbox[0] + f.bbox[2] / 2) for f in faces], width)
+            log.info("look: %d face(s) at x=%s of %dx%d", len(faces),
+                     [int(f.bbox[0] + f.bbox[2] / 2) for f in faces], width, frame.shape[0])
             return any(0.1 * width < f.bbox[0] + f.bbox[2] / 2 < 0.9 * width for f in faces)
 
         moves = Moves(mini, settings.daemon_url, sees_face=sees_face_ahead)
@@ -92,6 +93,10 @@ async def run_translator(settings: Settings) -> None:
         voice_ref.append(voice)
 
         async def start_setup() -> None:
+            for _ in range(50):  # the camera takes a few seconds to start; don't sweep blind
+                if await asyncio.to_thread(mini.media.get_frame) is not None:
+                    break
+                await asyncio.sleep(0.2)
             if not state.ready:  # after a reconnect with languages known, just carry on translating
                 await voice.prompt(SETUP_PROMPT)
 
