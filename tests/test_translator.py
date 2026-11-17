@@ -65,3 +65,15 @@ async def test_act_sad_and_unknown_tool():
     _, _, _, sad, handle = make()
     assert (await handle("act_sad", {}))["ok"] is True and sad == [True]
     assert "error" in await handle("dance", {})
+
+
+def test_setup_confirms_language_before_saving():
+    text = build_translator_instructions(TranslatorState())
+    assert "is that right?" in text and "Only after they say yes" in text
+
+
+def test_same_language_both_sides_means_no_translating():
+    state = TranslatorState(left="English", right="english")
+    assert state.same_language
+    text = build_translator_instructions(state)
+    assert "both speak English" in text and "Don't translate" in text

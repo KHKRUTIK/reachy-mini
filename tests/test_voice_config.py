@@ -100,3 +100,15 @@ def test_full_duplex_never_blocks_mic_for_playback():
     v = RealtimeVoice(S, _Mini(), "x")
     v._playback_end = 100.0
     assert v.mic_blocked(now=99.0) is False
+
+
+def test_translator_noise_settings():
+    c = build_session_config(S, "x", [], noise_reduction="near_field", vad_threshold=0.7)
+    assert c["audio"]["input"]["noise_reduction"] == {"type": "near_field"}
+    assert c["audio"]["input"]["turn_detection"]["threshold"] == 0.7
+
+
+def test_greeter_keeps_default_audio_settings():
+    c = build_session_config(S, "x", [])
+    assert "noise_reduction" not in c["audio"]["input"]
+    assert "threshold" not in c["audio"]["input"]["turn_detection"]

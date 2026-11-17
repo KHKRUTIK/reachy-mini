@@ -24,7 +24,12 @@ ToolHandler = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
 
 
 def build_session_config(
-    settings: Settings, instructions: str, tools: list[dict], max_output_tokens: int = 200
+    settings: Settings,
+    instructions: str,
+    tools: list[dict],
+    max_output_tokens: int = 200,
+    noise_reduction: str | None = None,  # "near_field": ignore distant voices (translator)
+    vad_threshold: float | None = None,  # higher = needs louder, closer speech to count as a turn
 ) -> dict[str, Any]:
     config: dict[str, Any] = {
         "type": "realtime",
@@ -49,6 +54,10 @@ def build_session_config(
         },
         "tools": tools,
     }
+    if noise_reduction:
+        config["audio"]["input"]["noise_reduction"] = {"type": noise_reduction}
+    if vad_threshold is not None:
+        config["audio"]["input"]["turn_detection"]["threshold"] = vad_threshold
     if tools:
         config["tool_choice"] = "auto"
     return config
@@ -76,6 +85,8 @@ class RealtimeVoice:
         tool_handler: ToolHandler | None = None,
         half_duplex: bool = False,
         max_output_tokens: int = 200,
+        noise_reduction: str | None = None,
+        vad_threshold: float | None = None,
     ) -> None:
         self._settings = settings
         self._mini = mini
@@ -84,6 +95,8 @@ class RealtimeVoice:
         self._tool_handler = tool_handler
         self._half_duplex = half_duplex  # don't send mic audio while Reachy is talking (no hearing himself)
         self._max_output_tokens = max_output_tokens
+        self._noise_reduction = noise_reduction
+        self._vad_threshold = vad_threshold
         self.on_connected: Callable[[], Awaitable[None]] | None = None
         self._conn: Any = None
         self._connected = asyncio.Event()
@@ -163,7 +176,8 @@ class RealtimeVoice:
                 async with client.realtime.connect(model=self._settings.realtime_model) as conn:
                     self._conn = conn
                     await conn.session.update(
-                        session=build_session_config(self._settings, self._instructions, self._tools, self._max_output_tokens)
+                        session=build_session_config(self._settings, self._instructions, self._tools, self._max_output_tokens,
+                                                     self._noise_reduction, self._vad_threshold)
                     )
                     self._connected.set()
                     log.info("realtime connected (%s)", self._settings.realtime_model)

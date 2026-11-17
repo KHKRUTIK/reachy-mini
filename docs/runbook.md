@@ -50,12 +50,13 @@ Reachy can also work as a polite interpreter between two people who don't share 
 
 1. **Start:** `./scripts/start.sh translator`. Stop with `./scripts/stop.sh` (or Ctrl+C) as usual. Plain `./scripts/start.sh` is the normal greeter again.
 2. **Stand** one person on Reachy's **left**, the other on his **right**, both about an arm's length away.
-3. **Setup:** he turns left and asks that person which language they want, then turns right and asks the other person.
+3. **Setup:** he turns left and asks that person which language they want, repeats it back ("Spanish, is that right?") and waits for a yes. Then he does the same on the right. If both choose the same language, he tells them they can talk directly and stays quiet unless spoken to.
 4. **Talk normally, one at a time.** After each person speaks, he turns to the other person and relays it in their language, for example "The gentleman is asking you…". Pause after each sentence or two so he can keep up.
 5. **New people:** say "Reachy, new conversation" and he runs setup again.
 
 Notes:
 - He can't be interrupted mid-sentence in this mode. His mic is off while he's talking, so he doesn't translate himself. Wait for him to finish.
+- He filters out distant voices, so speak clearly from about an arm's length. In a very loud room, step closer.
 - He decides "gentleman" or "lady" from the voice, and says "your guest" when unsure.
 - The first time he turns to each side, he sweeps outward (30° up to 120°) until he sees a face and remembers that spot. After that he goes straight back to it, and looks again if the person has moved. If he finds nobody he waits at 90°, so stand a little closer or more in front of him.
 - `logs/greeter.log` shows `translator: left speaks …` lines once setup has worked.
