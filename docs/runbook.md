@@ -57,7 +57,7 @@ Reachy can also work as a polite interpreter between two people who don't share 
 Notes:
 - He can't be interrupted mid-sentence in this mode. His mic is off while he's talking, so he doesn't translate himself. Wait for him to finish.
 - He decides "gentleman" or "lady" from the voice, and says "your guest" when unsure.
-- If he turns the wrong way (to the right when he should face the left person), change `SIDE_YAWS_DEG` in `greeter/robot.py` by swapping the two signs.
+- The first time he turns to each side, he sweeps outward until he sees a face and remembers that spot. After that he goes straight back to it, and looks again if the person has moved. If he finds nobody he waits at 60°, so stand a little closer or more in front of him.
 - `logs/greeter.log` shows `translator: left speaks …` lines once setup has worked.
 
 ## Troubleshooting

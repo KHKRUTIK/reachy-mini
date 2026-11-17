@@ -66,7 +66,17 @@ async def run_translator(settings: Settings) -> None:
     with ReachyMini() as mini:
         async with httpx.AsyncClient(timeout=3.0) as client:
             await client.post(f"{settings.daemon_url}/api/media/tracking/enable")
-        moves = Moves(mini, settings.daemon_url)
+        detector = FaceDetector()
+
+        def sees_face_ahead() -> bool:
+            """A face near the middle of the frame, so the other person at the edge doesn't count."""
+            frame = mini.media.get_frame()  # in memory only, never saved
+            if frame is None:
+                return False
+            width = frame.shape[1]
+            return any(0.2 * width < f.bbox[0] + f.bbox[2] / 2 < 0.8 * width for f in detector.detect(frame))
+
+        moves = Moves(mini, settings.daemon_url, sees_face=sees_face_ahead)
         state = TranslatorState()
         voice_ref: list[RealtimeVoice] = []
 

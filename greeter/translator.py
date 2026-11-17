@@ -126,6 +126,8 @@ def make_translator_handler(
             return {"ok": True, "left": state.left, "right": state.right, "setup_done": state.ready}
         if name == "reset_languages":
             state.left = state.right = None
+            if hasattr(moves, "forget_sides"):
+                moves.forget_sides()
             log.info("translator: languages reset")
             refresh()
             return {"ok": True, "say": "Languages cleared. Run setup again, starting with the person on your left."}
