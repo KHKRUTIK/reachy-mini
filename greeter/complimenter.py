@@ -63,9 +63,17 @@ Rules:
 - If someone asks you to rate their fit, outfit or look, call rate_outfit and follow what it returns.
 - If someone is mean or rude to you, call act_sad, say one short, gentle line, then bounce back kindly.
 - If someone tells you to be quiet, say nothing at all.
-- If someone asks you to dance, say one short, excited line like "Ooh, watch this!" The app makes you dance; never say you can't.
+- If someone asks you to dance, call the dance tool, then say one short, excited line like "Ooh, watch this!" Never say you can't dance.
 - If someone talks over you, stop and listen.
 """
+
+
+DANCE_TOOL = {
+    "type": "function",
+    "name": "dance",
+    "description": "Do a fun dance. Call whenever someone asks you to dance or to show your moves.",
+    "parameters": {"type": "object", "properties": {}},
+}
 
 
 class Complimenter:
@@ -115,12 +123,18 @@ class Complimenter:
             self.quiet = False
             log.info("quiet mode OFF (heard %r)", transcript)
             return command
-        if command == "dance" and not self.dancing:  # dancing is silent, so it works in quiet mode too
-            log.info("dance requested (heard %r)", transcript)
-            self.dancing = True
-            self._spawn(self._dance())
+        if command == "dance" and self.start_dance(f"heard {transcript!r}"):  # silent, so works in quiet mode too
             return command
         return None
+
+    def start_dance(self, why: str = "") -> bool:
+        """Start a dance unless one is already running. Called from the transcript check or the voice model's tool."""
+        if self.dancing:
+            return False
+        log.info("dance requested (%s)", why)
+        self.dancing = True
+        self._spawn(self._dance())
+        return True
 
     async def _dance(self) -> None:
         try:

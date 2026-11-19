@@ -16,7 +16,7 @@ from reachy_mini.vision.face_detector import FaceDetector
 
 from greeter.arrival import ArrivalPrompter
 from greeter.checkin import CheckinGate, ScanResult
-from greeter.complimenter import INSTRUCTIONS as COMPLIMENTER_INSTRUCTIONS, WAKE_LINE, Complimenter
+from greeter.complimenter import DANCE_TOOL, INSTRUCTIONS as COMPLIMENTER_INSTRUCTIONS, WAKE_LINE, Complimenter
 from greeter.compliment import crop_below_face, rate_outfit, suggest_compliment
 from greeter.config import Settings, load_settings
 from greeter.event_info import build_instructions, fetch_event_text
@@ -147,8 +147,18 @@ async def run_complimenter(settings: Settings) -> None:
         async def act_sad() -> None:
             await comp_ref[0].act_sad()
 
-        tools = [t for t in TOOLS if t["name"] in ("rate_outfit", "act_sad")]
-        voice = RealtimeVoice(settings, mini, COMPLIMENTER_INSTRUCTIONS, tools, make_tool_handler(rate_current_fit, act_sad))
+        tools = [t for t in TOOLS if t["name"] in ("rate_outfit", "act_sad")] + [DANCE_TOOL]
+        base_handler = make_tool_handler(rate_current_fit, act_sad)
+
+        async def handle_tool(name: str, args: dict) -> dict:
+            if name == "dance":
+                started = comp_ref[0].start_dance("voice model asked")
+                return {"ok": True, "say": "You're dancing now! One short, excited line." if started
+                        else "You're already dancing. Keep it short."}
+            return await base_handler(name, args)
+
+        voice = RealtimeVoice(settings, mini, COMPLIMENTER_INSTRUCTIONS, tools, handle_tool,
+                              noise_reduction="near_field", vad_threshold=0.7)  # a busy room: only hear people close to him
         comp = Complimenter(None, moves, make_compliment_fn(mini, detector, openai_client, settings))
         speech = SpeechQueue(lambda text: comp.say(text, voice.say_exact))
         comp.speech = speech  # the queue speaks through comp.say, so it is made after comp

@@ -145,3 +145,15 @@ async def test_dance_runs_once_and_works_while_quiet():
     assert c.hear("do a dance") is None  # already dancing
     await c.drain()
     assert moves.calls == ["dance"] and not c.dancing and speech.lines == []
+
+
+async def test_voice_model_can_start_a_dance_but_never_two_at_once():
+    c, _, moves = make()
+    assert c.start_dance("tool") is True
+    assert c.start_dance("tool") is False
+    assert c.hear("do a dance") is None
+    await c.drain()
+    assert moves.calls == ["dance"]
+    assert c.start_dance("tool") is True
+    await c.drain()
+    assert moves.calls == ["dance", "dance"]
