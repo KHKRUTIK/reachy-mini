@@ -16,6 +16,7 @@ from reachy_mini.vision.face_detector import FaceDetector
 
 from greeter.arrival import ArrivalPrompter
 from greeter.checkin import CheckinGate, ScanResult
+from greeter.complimenter import INSTRUCTIONS as COMPLIMENTER_INSTRUCTIONS, WAKE_LINE, Complimenter
 from greeter.compliment import crop_below_face, rate_outfit, suggest_compliment
 from greeter.config import Settings, load_settings
 from greeter.event_info import build_instructions, fetch_event_text
@@ -114,10 +115,86 @@ async def run_translator(settings: Settings) -> None:
                 log.warning("could not disable head tracking on exit")
 
 
+def make_compliment_fn(mini, detector, openai_client, settings: Settings):
+    async def get_compliment(avoid: list[str] | None = None) -> str | None:
+        frame = mini.media.get_frame()  # in memory only, never saved
+        if frame is None:
+            log.info("compliment: no camera frame")
+            return None
+        crop = crop_below_face(frame, await asyncio.to_thread(detector.detect, frame))
+        if crop is None:
+            log.info("compliment: no face found or too little clothing in view; nothing sent")
+            return None
+        ok, jpeg = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        return await suggest_compliment(openai_client, settings.compliment_model, jpeg.tobytes(), avoid=avoid) if ok else None
+    return get_compliment
+
+
+async def run_complimenter(settings: Settings) -> None:
+    """Compliment mode: compliment everyone who walks up; 'be quiet' silences him until 'wake up'."""
+    with ReachyMini() as mini:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            await client.post(f"{settings.daemon_url}/api/media/tracking/enable")
+        detector = FaceDetector()
+        openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
+        moves = Moves(mini, settings.daemon_url)
+        comp_ref: list[Complimenter] = []
+
+        async def rate_current_fit() -> dict:
+            return await rate_fit(mini.media.get_frame, detector.detect,
+                                  lambda jpeg: rate_outfit(openai_client, settings.compliment_model, jpeg))
+
+        async def act_sad() -> None:
+            await comp_ref[0].act_sad()
+
+        tools = [t for t in TOOLS if t["name"] in ("rate_outfit", "act_sad")]
+        voice = RealtimeVoice(settings, mini, COMPLIMENTER_INSTRUCTIONS, tools, make_tool_handler(rate_current_fit, act_sad))
+        comp = Complimenter(None, moves, make_compliment_fn(mini, detector, openai_client, settings))
+        speech = SpeechQueue(lambda text: comp.say(text, voice.say_exact))
+        comp.speech = speech  # the queue speaks through comp.say, so it is made after comp
+        comp_ref.append(comp)
+
+        def heard(transcript: str) -> None:
+            command = comp.hear(transcript)
+            if command == "quiet":
+                voice.set_muted(True)
+            elif command == "wake":
+                voice.set_muted(False)
+                asyncio.get_running_loop().create_task(speech.put(WAKE_LINE))
+
+        voice.on_transcript = heard
+        voice.set_listening(True)
+
+        async def faces() -> None:
+            last_log = 0.0
+            while True:
+                frame = await asyncio.to_thread(mini.media.get_frame)  # in memory only, never saved
+                found = await asyncio.to_thread(detector.detect, frame) if frame is not None else []
+                now = time.monotonic()
+                if now - last_log >= 10.0:
+                    log.info("faces: %s", "no camera frame" if frame is None else len(found))
+                    last_log = now
+                await comp.handle_face(bool(found), now, can_prompt=not voice.speaking())  # room chatter doesn't block
+                await asyncio.sleep(0.25)
+
+        log.info("complimenter ready")
+        try:
+            await asyncio.gather(voice.run(), speech.run(), faces())
+        finally:
+            try:
+                async with httpx.AsyncClient(timeout=3.0) as client:
+                    await client.post(f"{settings.daemon_url}/api/media/tracking/disable")
+            except httpx.HTTPError:
+                log.warning("could not disable head tracking on exit")
+
+
 async def amain() -> None:
     settings = load_settings(load_dotenv(ROOT / ".env"))
     if settings.mode == "translator":
         await run_translator(settings)
+        return
+    if settings.mode == "compliment":
+        await run_complimenter(settings)
         return
     event_text = await fetch_event_text(settings.event_url, ROOT / "data" / "event_info.md")
     extra = (ROOT / "data" / "event_extra.md")

@@ -105,3 +105,10 @@ async def test_greeter_act_sad_runs_sad_move():
     await g.act_sad()
     await g.drain()
     assert moves.calls == ["sad"]
+
+
+async def test_rate_fit_masks_faces_with_float_boxes():
+    import numpy as np
+    other = face(np.float32(100.4), np.float32(100.6), np.float32(90.2), np.float32(110.7))
+    out = await rate_fit(lambda: FRAME, lambda f: [GUEST, other], _rate_ok)
+    assert out["rating"].startswith("9/10")

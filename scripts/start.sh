@@ -2,6 +2,7 @@
 # Start Reachy the greeter with the right settings, checking each part on the way.
 #   ./scripts/start.sh             greeter (from ~/Projects/reachy-mini; Ctrl+C stops everything)
 #   ./scripts/start.sh translator  translator between two people on his left and right
+#   ./scripts/start.sh compliment  compliments everyone he sees ("Reachy, be quiet" / "Reachy, wake up")
 # Optional in .env: REACHY_VOLUME=60
 set -u
 cd "$(dirname "$0")/.."
@@ -9,8 +10,8 @@ VOLUME=$(grep -E '^REACHY_VOLUME=' .env 2>/dev/null | cut -d= -f2)
 VOLUME=${VOLUME:-60}
 mkdir -p logs
 MODE=${1:-greeter}
-case "$MODE" in greeter|translator) export REACHY_MODE=$MODE ;;
-  *) echo "Unknown mode '$MODE'. Use: ./scripts/start.sh  or  ./scripts/start.sh translator"; exit 1 ;; esac
+case "$MODE" in greeter|translator|compliment) export REACHY_MODE=$MODE ;;
+  *) echo "Unknown mode '$MODE'. Use: ./scripts/start.sh  [translator | compliment]"; exit 1 ;; esac
 ok()   { printf '  \033[32m✔\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$1"; }
 fail() { printf '  \033[31m✘\033[0m %s\n' "$1"; exit 1; }
@@ -94,6 +95,9 @@ echo
 if [ "$MODE" = translator ]; then
   echo "Reachy is ready as a translator. Stand on his left and right; he'll ask each of you your language."
   echo "Say \"Reachy, new conversation\" to start over with new people."
+elif [ "$MODE" = compliment ]; then
+  echo "Reachy is ready to compliment everyone he sees."
+  echo "Say \"Reachy, be quiet\" to silence him, and \"Reachy, wake up\" to bring him back."
 else
   EVENT=$(grep -E '^EVENT_NAME=' .env 2>/dev/null | cut -d= -f2-)
   echo "Reachy is ready for: ${EVENT:-OpenAI Dev Day}"

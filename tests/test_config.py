@@ -29,3 +29,8 @@ def test_mode_defaults_to_greeter_and_accepts_translator():
 def test_unknown_mode_is_rejected():
     with pytest.raises(ValueError, match="REACHY_MODE"):
         load_settings({"OPENAI_API_KEY": "k", "REACHY_MODE": "dancer"})
+
+
+def test_compliment_mode():
+    from greeter.config import load_settings
+    assert load_settings({"OPENAI_API_KEY": "sk-x", "REACHY_MODE": "Compliment"}).mode == "compliment"

@@ -112,3 +112,13 @@ def test_greeter_keeps_default_audio_settings():
     c = build_session_config(S, "x", [])
     assert "noise_reduction" not in c["audio"]["input"]
     assert "threshold" not in c["audio"]["input"]["turn_detection"]
+
+
+def test_speaking_follows_reachys_own_playback_only():
+    from greeter.voice import RealtimeVoice
+    v = RealtimeVoice(S, _Mini(), "x")
+    v._playback_end = 100.0
+    assert v.speaking(now=99.0) and v.speaking(now=100.5)
+    assert not v.speaking(now=101.5)
+    v.note_activity(now=101.0)  # someone in the room talking
+    assert not v.speaking(now=101.5)

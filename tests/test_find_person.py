@@ -189,3 +189,18 @@ async def test_turning_points_the_head_and_camera_the_same_way():
     await moves.turn_to("left")
     g = mini.gotos[0]
     assert np.allclose(g["head"], create_head_pose(yaw=float(np.rad2deg(g["body_yaw"])), degrees=True))
+
+
+async def test_dance_plays_a_library_move_long_enough_then_resets():
+    played = []
+    class Mini:
+        def play_move(self, move, initial_goto_duration=0.0, sound=True):
+            played.append((move.name, initial_goto_duration, sound))
+        def goto_target(self, **kw): played.append("reset")
+    from greeter.robot import Moves
+    m = Moves(Mini(), "http://127.0.0.1:1")
+    name = await m.dance("chicken_peck")  # 2.1 s per beat cycle -> 3 reps
+    assert name == "chicken_peck"
+    assert played == [("chicken_peck", 0.5, False), ("chicken_peck", 0.0, False), ("chicken_peck", 0.0, False), "reset"]
+    other = await m.dance()
+    assert other != "chicken_peck"

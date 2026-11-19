@@ -15,10 +15,10 @@ class Settings:
     daemon_url: str = "http://127.0.0.1:8000"
     event_url: str = "https://luma.com/event/evt-ZLcgMdLTqHF8bK3"
     event_name: str = "OpenAI Dev Day"  # spoken: "MLAI welcomes you to the {event_name}!"
-    mode: str = "greeter"  # or "translator"
+    mode: str = "greeter"  # or "translator", "compliment"
 
 
-MODES = ("greeter", "translator")
+MODES = ("greeter", "translator", "compliment")
 
 _OPTIONAL = {
     "REALTIME_MODEL": ("realtime_model", str),

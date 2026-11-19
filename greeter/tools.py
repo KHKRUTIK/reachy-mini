@@ -78,7 +78,7 @@ def _mask_faces(frame: np.ndarray, faces: list) -> np.ndarray:
     out = frame.copy()
     height, width = out.shape[:2]
     for f in faces:
-        x, y, w, h = f.bbox
+        x, y, w, h = (int(round(float(v))) for v in f.bbox)  # the detector can return floats
         mx, my = int(0.3 * w), int(0.3 * h)
         out[max(0, y - my):min(height, y + h + my), max(0, x - mx):min(width, x + w + mx)] = 0
     return out

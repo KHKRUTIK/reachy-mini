@@ -53,8 +53,17 @@ RATE_PROMPT = (
 )
 
 
-async def suggest_compliment(client, model: str, crop_jpeg: bytes, timeout_s: float = 4.0) -> str | None:
-    return await _ask_about_outfit(client, model, crop_jpeg, PROMPT, timeout_s, max_tokens=60, label="compliment")
+VARY_PROMPT = (
+    " Pick the most distinctive thing you can see and name it precisely (colour plus item, print, logo, texture, "
+    "accessory). Even a plain item counts: 'Love that navy t-shirt!' is great. Vary your wording. You still must "
+    "give a compliment; just phrase it differently from these lines you said to other people earlier: "
+)
+
+
+async def suggest_compliment(client, model: str, crop_jpeg: bytes, timeout_s: float = 4.0,
+                             avoid: list[str] | None = None) -> str | None:
+    prompt = PROMPT + (VARY_PROMPT + " | ".join(avoid) if avoid else "")
+    return await _ask_about_outfit(client, model, crop_jpeg, prompt, timeout_s, max_tokens=60, label="compliment")
 
 
 async def rate_outfit(client, model: str, crop_jpeg: bytes, timeout_s: float = 6.0) -> str | None:

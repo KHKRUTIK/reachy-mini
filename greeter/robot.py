@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
+import random
 from typing import Any, Callable
 
 import httpx
@@ -18,6 +20,7 @@ SIDE_SIGN = {"left": 1.0, "right": -1.0}
 SIDE_SWEEP_DEG = [30, 45, 60, 75, 90, 105, 120]  # body can go to 160
 SIDE_DEFAULT_DEG = 90  # where he settles if he finds nobody
 LOOKS_PER_STOP = 3     # camera checks at each stop (one frame can miss a face)
+DANCE_MIN_S = 6.0      # one dance from Pollen's library, repeated until it lasts at least this long
 
 
 def _pose(pitch=0.0, roll=0.0, yaw=0.0):
@@ -117,6 +120,29 @@ class Moves:
         finally:
             self._side = side
             await self._tracking(True)
+
+    async def dance(self, name: str | None = None) -> str:
+        """A random dance from Pollen's reachy_mini_dances_library (never the same one twice in a row)."""
+        from reachy_mini_dances_library import DanceMove
+        from reachy_mini_dances_library.collection.dance import AVAILABLE_MOVES
+
+        if name is None:
+            choices = [n for n in AVAILABLE_MOVES if n != getattr(self, "_last_dance", None)]
+            name = random.choice(choices)
+        self._last_dance = name
+        move = DanceMove(name)
+        reps = max(1, math.ceil(DANCE_MIN_S / move.duration))
+        log.info("dance: %s x%d (%.1f s)", name, reps, reps * move.duration)
+        await self._tracking(False)
+        try:
+            for i in range(reps):
+                await asyncio.to_thread(self._mini.play_move, move, initial_goto_duration=0.5 if i == 0 else 0.0,
+                                        sound=False)
+            await asyncio.to_thread(self._mini.goto_target, head=_pose(), antennas=[0.0, 0.0], body_yaw=0.0,
+                                    duration=0.6)
+        finally:
+            await self._tracking(True)
+        return name
 
     def forget_sides(self) -> None:
         """New conversation: forget where the two people were standing."""

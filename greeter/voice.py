@@ -30,6 +30,7 @@ def build_session_config(
     max_output_tokens: int = 200,
     noise_reduction: str | None = None,  # "near_field": ignore distant voices (translator)
     vad_threshold: float | None = None,  # higher = needs louder, closer speech to count as a turn
+    auto_reply: bool = True,  # False: still transcribe what people say, but never answer (quiet mode)
 ) -> dict[str, Any]:
     config: dict[str, Any] = {
         "type": "realtime",
@@ -42,8 +43,8 @@ def build_session_config(
                 "transcription": {"model": "gpt-4o-transcribe"},
                 "turn_detection": {
                     "type": "server_vad",
-                    "interrupt_response": True,
-                    "create_response": True,
+                    "interrupt_response": auto_reply,
+                    "create_response": auto_reply,
                     "silence_duration_ms": 600,
                 },
             },
@@ -108,6 +109,8 @@ class RealtimeVoice:
         self._playback_end = 0.0
         self._last_activity = -1e9
         self.on_guest_speech: Callable[[], None] | None = None
+        self.on_transcript: Callable[[str], None] | None = None
+        self._muted = False
         self._in_rate = mini.media.get_input_audio_samplerate()
         self._out_rate = mini.media.get_output_audio_samplerate()
 
@@ -124,10 +127,25 @@ class RealtimeVoice:
         now = time.monotonic() if now is None else now
         return now - self._last_activity < seconds
 
+    def speaking(self, now: float | None = None, grace_s: float = 1.0) -> bool:
+        """True while Reachy's own audio is playing (plus a short grace), whatever the room is doing."""
+        now = time.monotonic() if now is None else now
+        return now < self._playback_end + grace_s
+
     def mic_blocked(self, now: float | None = None) -> bool:
         """Half-duplex: True while Reachy's own audio is (or just was) playing."""
         now = time.monotonic() if now is None else now
         return self._half_duplex and now < self._playback_end + 0.3
+
+    def set_muted(self, muted: bool) -> None:
+        """Quiet mode: cut off what he's saying and play none of his replies (he keeps listening for "wake up")."""
+        self._muted = muted
+        if muted and self._conn is not None:
+            asyncio.get_running_loop().create_task(self._interrupt())
+
+    def _session_config(self) -> dict[str, Any]:
+        return build_session_config(self._settings, self._instructions, self._tools, self._max_output_tokens,
+                                    self._noise_reduction, self._vad_threshold)
 
     def update_instructions(self, text: str) -> None:
         """Replace the session instructions (now, and on every reconnect)."""
@@ -175,10 +193,7 @@ class RealtimeVoice:
             try:
                 async with client.realtime.connect(model=self._settings.realtime_model) as conn:
                     self._conn = conn
-                    await conn.session.update(
-                        session=build_session_config(self._settings, self._instructions, self._tools, self._max_output_tokens,
-                                                     self._noise_reduction, self._vad_threshold)
-                    )
+                    await conn.session.update(session=self._session_config())
                     self._connected.set()
                     log.info("realtime connected (%s)", self._settings.realtime_model)
                     backoff = 1.0
@@ -248,13 +263,18 @@ class RealtimeVoice:
                     self.on_guest_speech()
             elif t == "conversation.item.input_audio_transcription.completed":
                 log.info("voice: heard %r", getattr(event, "transcript", ""))
+                if self.on_transcript:
+                    self.on_transcript(getattr(event, "transcript", "") or "")
             if t == "input_audio_buffer.speech_started" and not self._forced_active:
                 self.note_activity()
                 self._flush_playback()
             elif t == "response.created":
                 self._current_response = event.response.id
+                if self._muted and not self._forced_active:
+                    log.info("voice: quiet, not replying")
+                    asyncio.create_task(self._interrupt())
             elif t == "response.output_audio.delta":
-                if event.response_id in self._discarded:
+                if event.response_id in self._discarded or (self._muted and not self._forced_active):
                     continue
                 if not self._forced_active:
                     self.note_activity()

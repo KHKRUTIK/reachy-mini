@@ -7,3 +7,5 @@ logs/
 data/event_info.md
 vendor/
 docs/reel-script.md
+.DS_Store
+.pytest_cache/

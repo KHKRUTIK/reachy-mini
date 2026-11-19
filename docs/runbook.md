@@ -44,6 +44,16 @@ It checks the USB, mic, motors and camera, sets the volume (`REACHY_VOLUME` in `
 - **Stop Reachy:** press Ctrl+C in the app terminal, or run `pkill -f greeter.main`. This also stops the head following faces.
 - **Restart Reachy:** run the step 5 command again.
 
+## Compliment mode
+
+Reachy compliments each new person who walks up about a second after he sees them, and gives a fresh, different compliment every 15 seconds while anyone stays in view. He names something specific (for example "Love that black shirt!") and avoids repeating his last 10 lines. There are no check-ins and no QR scanning in this mode.
+
+1. **Start:** `./scripts/start.sh compliment`. Stop with `./scripts/stop.sh` (or Ctrl+C) as usual.
+2. **Silence him:** say "Reachy, be quiet" (or "shut up", "stop talking", "hush"). He stops mid-sentence and says nothing at all, not even replies, until you say **"Reachy, wake up"**. He keeps following faces while he's quiet.
+3. **Dance:** say "Reachy, do a dance" (or "dance for us"). He picks a random dance from Pollen's dances library (never the same one twice in a row) and dances for about 6 seconds. This works in quiet mode too, since dancing is silent.
+4. People can still chat with him, ask him to rate their fit, and he droops if someone's mean.
+5. `logs/greeter.log` shows `quiet mode ON` / `quiet mode OFF` when he heard you.
+
 ## Translator mode
 
 Reachy can also work as a polite interpreter between two people who don't share a language. None of the greeter features run in this mode: no check-ins, compliments or fit ratings, and no scanner tab needed.
