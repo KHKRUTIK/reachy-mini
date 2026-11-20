@@ -55,11 +55,16 @@ Logs go to `logs/greeter.log` (the app) and `daemon.log` (the robot software).
 
 ## Greeter mode: Luma check-in
 
-Greeter mode reads check-ins from Luma's own scanner page through a small Chrome extension. It doesn't use the Luma API, and it never sees your Luma login.
+Greeter mode reads check-ins from Luma's own scanner page through a small Chrome extension, **Reachy Greeter Bridge**. It doesn't use the Luma API, and it never sees your Luma login.
 
-1. In `chrome://extensions`, turn on Developer mode, click **Load unpacked** and pick the `extension/` folder.
-2. Open `https://luma.com/check-in/<your-event-id>/scan`, choose **Reachy Mini Camera** and switch on **Express mode**.
-3. Set `EVENT_URL` (the public Luma event page) and `EVENT_NAME` in `.env`. Reachy reads the event page so he can answer questions about it. Put extra facts, such as Wi-Fi or where the toilets are, in `data/event_extra.md`.
+**Full setup and troubleshooting: [docs/chrome-extension.md](docs/chrome-extension.md).** In short:
+
+1. In `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the repo's `extension/` folder.
+2. Run `./scripts/start.sh`, then open `https://luma.com/check-in/<your-event-id>/scan` in Chrome.
+3. Choose the **Reachy Mini Camera** and check the header says **"Express Mode On"**.
+4. After pulling new code, click the reload arrow on the extension in `chrome://extensions`, then reload the scanner tab.
+
+Set `EVENT_URL` (the public Luma event page) and `EVENT_NAME` in `.env`. Reachy reads the event page so he can answer questions about it. Put extra facts, such as Wi-Fi or where the toilets are, in `data/event_extra.md`.
 
 ## Privacy
 
@@ -83,3 +88,5 @@ node --test extension/parse.test.mjs    # extension tests
 | `greeter/complimenter.py` | Compliment mode and the quiet/wake/dance commands |
 | `greeter/translator.py` | Translator mode |
 | `docs/runbook.md` | Event-day checklist and troubleshooting |
+| `docs/chrome-extension.md` | Installing and checking the Luma scanner extension |
+| `extension/` | The Chrome extension (Reachy Greeter Bridge) |
